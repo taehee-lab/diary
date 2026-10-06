@@ -145,6 +145,8 @@ button{cursor:pointer}
 .dhab{display:flex;align-items:center;gap:10px;height:46px;padding:0 12px;border-top:1px solid var(--line)}
 .dhab:first-of-type{border-top:0}
 .dhab input{flex:1;min-width:0;border:0;background:transparent;outline:none;font-size:16px}
+.dhab .hname{flex:1;min-width:0;font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dc h4 .habEdit{float:right;border:0;background:var(--pill);border-radius:6px;padding:2px 9px;font-size:11.5px;color:var(--ink);margin-top:-2px}
 .dhab button{width:34px;height:34px;flex:none;border:1.5px solid var(--grid);border-radius:9px;background:transparent;font-size:16px;color:var(--paper)}
 .dhab button.on{background:var(--ink);border-color:var(--ink)}
 .dv .io{padding:12px;gap:8px}
@@ -240,6 +242,7 @@ const peek = k => db.days[k];
 // ── state ──
 let cur = monday(new Date());
 let curDay = new Date();   // 폰 하루 화면에 띄운 날
+let habEdit = false;       // 폰에서 습관 이름 편집 중인지
 let calMonth = null;
 
 function el(tag, cls, html){ const e = document.createElement(tag); if(cls) e.className = cls; if(html!=null) e.innerHTML = html; return e; }
@@ -425,18 +428,29 @@ function renderDay(){
   }
   card('이번 주 Focus on', focus);
 
-  // 습관 (오늘 칸만)
+  // 습관 (오늘 칸만). 이름은 한 번 써 두면 글자로만 보이고, 편집을 눌러야 고칠 수 있음
   const hab = el('div');
+  const named = db.habitNames.some(n => n.trim());
+  const editing = habEdit || !named;
   for(let i=0;i<HABITS;i++){
-    const row = el('div','dhab'), name = el('input');
-    name.placeholder = '습관 이름'; name.value = db.habitNames[i];
-    name.oninput = () => { db.habitNames[i] = name.value; save(); };
+    if(!editing && !db.habitNames[i].trim()) continue;
+    const row = el('div','dhab');
+    let name;
+    if(editing){
+      name = el('input'); name.placeholder = '습관 이름'; name.value = db.habitNames[i];
+      name.oninput = () => { db.habitNames[i] = name.value; save(); };
+    } else name = el('span','hname', db.habitNames[i].replace(/</g,'&lt;'));
     const on = db.weeks[wk]?.habits[i][wd];
     const btn = el('button', on ? 'on' : '', '✓');
     btn.onclick = () => { const w = week(wk); w.habits[i][wd] = !w.habits[i][wd]; btn.classList.toggle('on'); save(); };
     row.append(name, btn); hab.append(row);
   }
-  card(`Habit Tracker  ·  ${KDAYS[wd]}요일`, hab);
+  const hc = card(`Habit Tracker  ·  ${KDAYS[wd]}요일`, hab);
+  if(named){
+    const eb = el('button','habEdit', editing ? '완료' : '편집');
+    eb.onclick = () => { const y = scrollY; habEdit = !editing; renderDay(); scrollTo(0, y); };
+    hc.querySelector('h4').append(eb);
+  }
 
   // 저장 / 백업
   const io = el('div','io');
