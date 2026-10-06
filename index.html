@@ -1,0 +1,584 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="일기">
+<meta name="theme-color" content="#f4f4f2">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<title>Weekly Record</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f4f4f2; --paper:#ffffff; --ink:#1d1d1f; --sub:#8a8a8e; --line:#e6e6e3; --grid:#6d6d70;
+  --pill:#ececea; --pill-on:#7b7b7f; --pill-on2:#3a3a3d; --hl:#f2a7a7; --warn:#d98a2b; --over:#d2483f; --ok:#5b8f6a;
+  --mark-x:#c0453b;
+}
+:root[data-theme="dark"]{
+  --bg:#18181a; --paper:#222225; --ink:#ececee; --sub:#8d8d93; --line:#333338; --grid:#5c5c62;
+  --pill:#2c2c30; --pill-on:#5d5d63; --pill-on2:#8a8a92; --hl:#8a3b3b; --mark-x:#e27a70;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Gowun Dodum","Inter",system-ui,sans-serif;font-size:13px}
+input,textarea,button{font-family:inherit;color:inherit}
+button{cursor:pointer}
+
+/* ── top bar ── */
+.top{display:flex;align-items:center;gap:14px;padding:10px 20px;flex-wrap:wrap}
+.seg{display:flex;background:var(--paper);border-radius:10px;padding:4px;gap:2px}
+.seg button{border:0;background:transparent;padding:6px 10px;border-radius:7px;font-size:15px}
+.seg button:hover{background:var(--pill)}
+.months{display:flex;gap:6px;flex-wrap:wrap}
+.months button{border:0;width:30px;height:30px;border-radius:7px;background:var(--pill);color:var(--sub);font-family:Inter;font-size:12px}
+.months button.on1{background:var(--pill-on);color:#fff}
+.months button.on2{background:var(--pill-on2);color:#fff}
+.toggle{width:44px;height:24px;border-radius:12px;background:var(--pill);border:1px solid var(--line);position:relative}
+.toggle::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:var(--paper);box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left .15s}
+:root[data-theme="dark"] .toggle::after{left:22px}
+.save-state{margin-left:auto;color:var(--sub);font-family:Inter;font-size:12px}
+
+/* ── header ── */
+.head{display:flex;align-items:flex-end;justify-content:space-between;padding:8px 28px 4px}
+.head h1{font-family:Inter;font-weight:700;font-size:24px;margin:0}
+.head .range{font-family:Inter;font-weight:400;font-size:34px;color:var(--sub);letter-spacing:.5px}
+
+.wrap{display:flex;gap:14px;padding:6px 20px 30px;align-items:flex-start}
+.boardScroll{flex:1;overflow-x:auto;min-width:0}
+.board{display:grid;grid-template-columns:repeat(7,minmax(165px,1fr));min-width:1155px}
+.dayHead{padding:8px 10px 6px;font-family:Inter;font-size:14px;display:flex;gap:8px;align-items:baseline}
+.dayHead .n{position:relative}
+.dayHead.today .n,.dayHead.today .w{background:linear-gradient(transparent 45%,var(--hl) 45%,var(--hl) 85%,transparent 85%)}
+.cell{background:var(--paper);border-left:1px solid var(--grid);border-bottom:1px solid var(--grid);min-width:0}
+.cell.c6{border-right:1px solid var(--grid)}
+.cell.r1{border-top:1px solid var(--grid)}
+
+/* todo */
+.todo{display:flex;flex-direction:column}
+.trow{display:flex;border-bottom:1px solid var(--line);height:25px}
+.trow:last-child{border-bottom:0}
+.mark{width:24px;flex:none;border:0;border-right:1px solid var(--line);background:transparent;font-family:Inter;font-size:12px;font-weight:500;padding:0}
+.mark.x{color:var(--mark-x)}
+.trow input{flex:1;min-width:0;border:0;background:transparent;padding:0 6px;font-size:12.5px;outline:none}
+
+/* gratitude */
+.grat{padding:8px 8px 6px}
+.grat .lbl{font-family:Inter;font-size:10.5px;color:var(--sub);letter-spacing:.6px;margin-bottom:4px}
+.grow{display:flex;align-items:center;gap:6px;border-bottom:1px dashed var(--line);height:30px}
+.grow:last-child{border-bottom:0}
+.grow span{font-family:Inter;font-size:11px;color:var(--sub);width:12px}
+.grow input{flex:1;min-width:0;border:0;background:transparent;outline:none;font-size:12.5px}
+
+/* diary */
+.diary{position:relative;padding:0}
+.diary textarea{--fs:12.5px;--lh:20px;display:block;width:100%;border:0;resize:none;outline:none;overflow:hidden;
+  font-size:var(--fs);line-height:var(--lh);padding:6px 8px;word-break:break-all;
+  background:repeating-linear-gradient(to bottom,transparent 0,transparent calc(var(--lh) - 1px),var(--line) calc(var(--lh) - 1px),var(--line) var(--lh));
+  background-position:0 6px;background-color:transparent}
+.target{position:absolute;left:0;right:0;border-top:1.5px dashed var(--over);pointer-events:none;opacity:.55}
+.meter{padding:6px 8px 7px;border-top:1px solid var(--line)}
+.bar{height:4px;border-radius:2px;background:var(--line);overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--ok);transition:width .15s}
+.cnt{display:flex;justify-content:space-between;margin-top:4px;font-family:Inter;font-size:10.5px;color:var(--sub)}
+.cnt b{font-weight:500;color:var(--ink)}
+.kw input{width:100%;border:0;background:transparent;outline:none;padding:6px 8px;font-size:11.5px;color:var(--sub)}
+.kw{border-bottom:0}
+.kwrow .cell{border-bottom:1px solid var(--grid)}
+
+/* side */
+.side{width:330px;flex:none;display:flex;flex-direction:column;gap:12px}
+.card{background:var(--paper);border:1px solid var(--grid);border-radius:8px;padding:14px}
+.card h3{font-family:Inter;font-weight:500;font-size:14px;text-align:center;margin:0 0 12px}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;font-family:Inter;font-size:11px;text-align:center}
+.cal .h{color:var(--sub)}
+.cal button{border:0;background:transparent;padding:4px 0;border-radius:5px;font-family:Inter;font-size:11px}
+.cal button.dim{color:var(--sub);opacity:.5}
+.cal button.wk{background:var(--pill)}
+.cal button.td{outline:1.5px solid var(--hl)}
+.calTop{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-family:Inter;font-size:13px}
+.calTop button{border:0;background:transparent;font-size:14px;color:var(--sub)}
+.focus .frow{display:flex;align-items:center;gap:8px;height:28px}
+.focus .frow::before{content:"";width:6px;height:6px;border:1px solid var(--sub);border-radius:50%;flex:none}
+.focus input{flex:1;border:0;border-bottom:1px solid var(--line);background:transparent;outline:none;font-size:12.5px;padding:3px 0}
+.habits{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.habit input{width:100%;border:0;border-bottom:1px solid var(--line);background:transparent;outline:none;font-size:12px;padding:2px 0;margin-bottom:5px}
+.hdays{display:flex;border:1px solid var(--grid);border-radius:3px}
+.hdays button{flex:1;border:0;border-right:1px solid var(--line);background:transparent;font-family:Inter;font-size:9.5px;color:var(--sub);height:20px;padding:0}
+.hdays button:last-child{border-right:0}
+.hdays button.on{background:var(--ink);color:var(--paper)}
+.io{display:flex;flex-direction:column;gap:6px}
+.io button{border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:8px;font-size:12.5px;text-align:left}
+.io button:hover{border-color:var(--grid)}
+.io small{color:var(--sub);font-size:11px;line-height:1.5}
+@media (max-width:900px){.wrap{flex-direction:column}.side{width:100%}}
+
+/* ── 폰: 하루 한 장 ── */
+#dayView{display:none}
+@media (max-width:700px){#weekView{display:none}#dayView{display:block}}
+.dv{max-width:560px;margin:0 auto;padding:0 12px calc(28px + env(safe-area-inset-bottom))}
+.dvTop{position:sticky;top:0;z-index:5;background:var(--bg);display:flex;align-items:center;gap:6px;padding:calc(8px + env(safe-area-inset-top)) 0 8px}
+.dvTop .nav{border:0;background:var(--paper);width:42px;height:42px;border-radius:10px;font-size:20px;flex:none}
+.dvDate{flex:1;text-align:center;position:relative;font-family:Inter;font-weight:700;font-size:18px;min-width:0}
+.dvDate.today .d{background:linear-gradient(transparent 50%,var(--hl) 50%,var(--hl) 90%,transparent 90%)}
+.dvDate small{display:block;font-weight:400;font-size:11.5px;color:var(--sub);margin-top:1px}
+.dvDate .d{position:relative;display:inline-block}
+.dvDate input{position:absolute;inset:0;width:100%;height:100%;opacity:0;border:0}
+.toToday{border:0;background:var(--pill);border-radius:6px;padding:1px 7px;margin-right:6px;font-size:11.5px;color:var(--ink)}
+.dvTop .toggle{flex:none}
+.dc{background:var(--paper);border:1px solid var(--line);border-radius:12px;margin-top:12px;overflow:hidden}
+.dc h4{margin:0;padding:10px 12px 4px;font-family:Inter;font-size:11px;font-weight:500;color:var(--sub);letter-spacing:.6px}
+.dv .trow{height:44px}
+.dv .mark{width:44px;font-size:15px}
+.dv .trow input{font-size:16px;padding:0 10px}
+.dv .grat{padding:0}
+.dv .grow{height:44px;padding:0 12px;gap:10px}
+.dv .grow input{font-size:16px}
+.dv .meter{padding:8px 12px 10px}
+.dv .cnt{font-size:11.5px}
+.dv .kw input{font-size:16px;padding:12px}
+.dv .focus .frow{height:42px;padding:0 12px}
+.dv .focus input{font-size:16px}
+.dhab{display:flex;align-items:center;gap:10px;height:46px;padding:0 12px;border-top:1px solid var(--line)}
+.dhab:first-of-type{border-top:0}
+.dhab input{flex:1;min-width:0;border:0;background:transparent;outline:none;font-size:16px}
+.dhab button{width:34px;height:34px;flex:none;border:1.5px solid var(--grid);border-radius:9px;background:transparent;font-size:16px;color:var(--paper)}
+.dhab button.on{background:var(--ink);border-color:var(--ink)}
+.dv .io{padding:12px;gap:8px}
+.dv .io button{font-size:15px;padding:12px}
+</style>
+</head>
+<body>
+
+<div id="weekView">
+<div class="top">
+  <div class="seg">
+    <button id="btnPrev" title="지난 주">‹</button>
+    <button id="btnToday" title="이번 주로">오늘</button>
+    <button id="btnNext" title="다음 주">›</button>
+  </div>
+  <div class="months" id="months"></div>
+  <button class="toggle" id="theme" title="다크 모드"></button>
+  <div class="save-state saveState">자동 저장됨</div>
+</div>
+
+<div class="head">
+  <h1>Weekly record</h1>
+  <div class="range" id="range"></div>
+</div>
+
+<div class="wrap">
+  <div class="boardScroll"><div class="board" id="board"></div></div>
+
+  <aside class="side">
+    <div class="card">
+      <div class="calTop"><button id="calPrev">‹</button><span id="calTitle"></span><button id="calNext">›</button></div>
+      <div class="cal" id="cal"></div>
+    </div>
+    <div class="card focus">
+      <h3>Focus on</h3>
+      <div id="focus"></div>
+    </div>
+    <div class="card">
+      <h3>Habit Tracker</h3>
+      <div class="habits" id="habits"></div>
+    </div>
+    <div class="card io">
+      <button class="exportTxt"></button>
+      <button class="exportJson">전체 백업 저장 (.json)</button>
+      <button class="importJson">백업 불러오기</button>
+      <small>내용은 이 브라우저에 자동 저장돼. 브라우저 기록(사이트 데이터)을 지우면 사라지니까 가끔 백업 저장해 둬.</small>
+    </div>
+  </aside>
+</div>
+</div>
+
+<div id="dayView"></div>
+<input type="file" id="fileIn" accept=".json" hidden>
+
+<script>
+const TARGET = 600, TODO_ROWS = 10, HABITS = 6, FOCUS_ROWS = 5;
+// 일기 칸 기본 글씨 크기·줄 간격, 600자를 넘기면 min까지 줄어듦 (주간판 / 폰 하루 화면)
+const BOARD_FS = { fs:12.5, lh:20, min:8 }, PHONE_FS = { fs:16, lh:26, min:12 };
+const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const KDAYS = ['월','화','수','목','금','토','일'];
+const PHONE = matchMedia('(max-width:700px)');
+const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const MARKS = ['', 'O', '△', 'X'];
+// 600자 칸 높이 계산용 샘플 (띄어쓰기 비율을 실제 일기와 비슷하게)
+const SAMPLE = '오늘은 아침에 일어나서 수업을 듣고 과외를 갔다. 확실히 준비하니까 시간도 잘 가고 기분도 좋다. '.repeat(20).slice(0, TARGET);
+
+const $ = id => document.getElementById(id);
+const pad = n => String(n).padStart(2,'0');
+const key = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const addDays = (d,n) => { const x = new Date(d); x.setDate(x.getDate()+n); return x; };
+const monday = d => { const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); return addDays(x, -((x.getDay()+6)%7)); };
+const count = s => s.replace(/\n/g,'').length;
+
+// ── storage ──
+const DB_KEY = 'taehee-weekly-record';
+let db;
+try { db = JSON.parse(localStorage.getItem(DB_KEY)) || {}; } catch { db = {}; }
+db.days ??= {}; db.weeks ??= {}; db.habitNames ??= Array(HABITS).fill('');
+let saveTimer;
+const setState = t => document.querySelectorAll('.saveState').forEach(e => e.textContent = t);
+function save(){
+  setState('저장 중…');
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    try { localStorage.setItem(DB_KEY, JSON.stringify(db)); setState('자동 저장됨'); }
+    catch { setState('⚠ 저장 실패 — 백업 저장을 눌러줘'); }
+  }, 300);
+}
+const day = k => db.days[k] ??= { todos: Array.from({length:TODO_ROWS},()=>({s:0,t:''})), grat:['','',''], diary:'', kw:'' };
+const week = k => db.weeks[k] ??= { focus: Array(FOCUS_ROWS).fill(''), habits: Array.from({length:HABITS},()=>Array(7).fill(false)) };
+const peek = k => db.days[k];
+
+// ── state ──
+let cur = monday(new Date());
+let curDay = new Date();   // 폰 하루 화면에 띄운 날
+let calMonth = null;
+
+function el(tag, cls, html){ const e = document.createElement(tag); if(cls) e.className = cls; if(html!=null) e.innerHTML = html; return e; }
+
+// ── board ──
+function renderBoard(){
+  const b = $('board'); b.innerHTML = '';
+  const today = key(new Date());
+  const dates = DAYS.map((_,i) => addDays(cur,i));
+
+  dates.forEach((d,i) => {
+    const h = el('div', 'dayHead' + (key(d)===today ? ' today':''));
+    h.innerHTML = `<span class="n">${d.getDate()}</span><span class="w">${DAYS[i]}</span>`;
+    b.append(h);
+  });
+
+  // 1. 투두
+  dates.forEach((d,i) => {
+    const k = key(d), c = el('div', `cell todo r1 c${i}`);
+    for(let r=0;r<TODO_ROWS;r++){
+      const row = el('div','trow');
+      const data = peek(k)?.todos[r] ?? {s:0,t:''};
+      const m = el('button', 'mark' + (data.s===3?' x':''), MARKS[data.s]);
+      m.title = '클릭: O → △ → X';
+      m.onclick = () => { const t = day(k).todos[r]; t.s = (t.s+1)%4; m.textContent = MARKS[t.s]; m.classList.toggle('x', t.s===3); save(); };
+      const inp = el('input'); inp.value = data.t;
+      inp.oninput = () => { day(k).todos[r].t = inp.value; save(); };
+      inp.onkeydown = e => { if(e.key==='Enter'){ e.preventDefault(); c.querySelectorAll('input')[r+1]?.focus(); } };
+      row.append(m, inp); c.append(row);
+    }
+    b.append(c);
+  });
+
+  // 2. 감사한 것 3개 (원형 시간표 자리)
+  dates.forEach((d,i) => {
+    const k = key(d), c = el('div', `cell grat c${i}`);
+    c.append(el('div','lbl','감사한 것'));
+    for(let g=0;g<3;g++){
+      const row = el('div','grow'); row.append(el('span',null,g+1));
+      const inp = el('input'); inp.value = peek(k)?.grat[g] ?? '';
+      inp.oninput = () => { day(k).grat[g] = inp.value; save(); };
+      inp.onkeydown = e => { if(e.key==='Enter'){ e.preventDefault(); c.querySelectorAll('input')[g+1]?.focus(); } };
+      row.append(inp); c.append(row);
+    }
+    b.append(c);
+  });
+
+  // 3. 일기
+  dates.forEach((d,i) => b.append(diaryCell(key(d), `cell diary c${i}`, BOARD_FS, i===0 ? '오늘 일기…' : '')));
+
+  // 4. 키워드 한 줄
+  dates.forEach((d,i) => {
+    const k = key(d), c = el('div', `cell kw c${i}`);
+    c.style.borderBottom = '1px solid var(--grid)';
+    const inp = el('input'); inp.placeholder = '키워드'; inp.value = peek(k)?.kw ?? '';
+    inp.oninput = () => { day(k).kw = inp.value; save(); };
+    c.append(inp); b.append(c);
+  });
+
+  calibrate();
+}
+
+// 일기 칸 하나 (줄노트 + 600자 점선 + 글자 수 막대). cfg는 BOARD_FS / PHONE_FS
+function diaryCell(k, cls, cfg, placeholder){
+  const c = el('div', cls);
+  const ta = el('textarea'); ta.value = peek(k)?.diary ?? '';
+  ta.placeholder = placeholder; ta._cfg = cfg; ta._targetH = 0;
+  const tl = el('div','target');
+  const meter = el('div','meter','<div class="bar"><i></i></div><div class="cnt"><span><b>0</b> / 600자</span><span class="left"></span></div>');
+  const upd = () => {
+    const n = count(ta.value), r = n / TARGET;
+    const bar = meter.querySelector('i');
+    bar.style.width = Math.min(100, r*100) + '%';
+    bar.style.background = n > TARGET ? 'var(--over)' : r >= .85 ? 'var(--warn)' : 'var(--ok)';
+    meter.querySelector('b').textContent = n;
+    meter.querySelector('.left').textContent = n > TARGET ? `+${n-TARGET}자 초과` : n===0 ? '' : `${TARGET-n}자 남음`;
+    fit(ta);
+  };
+  ta.oninput = () => { day(k).diary = ta.value; save(); upd(); };
+  ta._upd = upd;
+  c.append(ta, tl, meter);
+  return c;
+}
+
+// 칸 너비 기준으로 600자가 딱 차는 높이를 계산 (화면에 보이는 칸만)
+function calibrate(){
+  document.querySelectorAll('.diary textarea').forEach(ta => {
+    if(!ta.offsetParent) return;
+    const cs = getComputedStyle(ta), cfg = ta._cfg;
+    // 칸이 이미 줄어든 상태일 수 있으니 기본 크기로 잰다
+    const m = el('div'); Object.assign(m.style, {
+      position:'absolute', visibility:'hidden', whiteSpace:'pre-wrap', wordBreak:'break-all',
+      width: (ta.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)) + 'px',
+      fontFamily: cs.fontFamily, fontSize: cfg.fs + 'px', lineHeight: cfg.lh + 'px'
+    });
+    m.textContent = SAMPLE; document.body.append(m);
+    const lines = Math.ceil(m.offsetHeight / cfg.lh);
+    m.remove();
+    const padTop = parseFloat(cs.paddingTop);
+    ta._targetH = lines * cfg.lh + padTop + parseFloat(cs.paddingBottom);
+    ta.parentNode.querySelector('.target').style.top = (padTop + lines*cfg.lh) + 'px';
+    ta._upd();
+  });
+}
+// 600자 칸을 넘치면 글씨와 줄 간격을 같은 비율로 줄여서 칸 안에 넣는다
+function fit(ta){
+  const cfg = ta._cfg, targetH = ta._targetH;
+  if(!targetH) return;
+  const size = fs => { ta.style.setProperty('--fs', fs + 'px'); ta.style.setProperty('--lh', fs * cfg.lh / cfg.fs + 'px'); };
+  ta.style.height = targetH + 'px';
+  let fs = cfg.fs; size(fs);
+  while(ta.scrollHeight > targetH && fs > cfg.min){ fs = Math.max(cfg.min, fs - .25); size(fs); }
+  // 가장 작은 글씨로도 안 들어가면 그때만 칸을 늘린다
+  if(ta.scrollHeight > targetH) ta.style.height = ta.scrollHeight + 'px';
+}
+
+// ── 폰: 하루 한 장 ──
+function renderDay(){
+  const v = $('dayView'); v.innerHTML = '';
+  const d = curDay, k = key(d), wk = key(monday(d)), wd = (d.getDay()+6)%7;
+  const isToday = k === key(new Date());
+  const dv = el('div','dv');
+
+  const top = el('div','dvTop');
+  const prev = el('button','nav','‹'), next = el('button','nav','›');
+  prev.onclick = () => goDay(addDays(d,-1)); next.onclick = () => goDay(addDays(d,1));
+  // 날짜를 누르면 달력이 뜸
+  const date = el('div','dvDate' + (isToday ? ' today' : ''),
+    `<span class="d">${d.getMonth()+1}월 ${d.getDate()}일 ${KDAYS[wd]}</span><small><span class="saveState">자동 저장됨</span></small>`);
+  const pick = el('input'); pick.type = 'date'; pick.value = k;
+  pick.onchange = () => { if(pick.value){ const [y,m,dd] = pick.value.split('-').map(Number); goDay(new Date(y,m-1,dd)); } };
+  date.querySelector('.d').append(pick);
+  if(!isToday){
+    const back = el('button','toToday','오늘로');
+    back.onclick = () => goDay(new Date());
+    date.querySelector('small').prepend(back);
+  }
+  const theme = el('button','toggle'); theme.title = '다크 모드'; theme.onclick = toggleTheme;
+  top.append(prev, date, next, theme);
+  dv.append(top);
+
+  const card = (title, body) => { const c = el('div','dc'); if(title) c.append(el('h4',null,title)); c.append(body); dv.append(c); return c; };
+
+  // 할 일
+  const todo = el('div','todo');
+  for(let r=0;r<TODO_ROWS;r++){
+    const row = el('div','trow');
+    const data = peek(k)?.todos[r] ?? {s:0,t:''};
+    const m = el('button', 'mark' + (data.s===3?' x':''), MARKS[data.s]);
+    m.onclick = () => { const t = day(k).todos[r]; t.s = (t.s+1)%4; m.textContent = MARKS[t.s]; m.classList.toggle('x', t.s===3); save(); };
+    const inp = el('input'); inp.value = data.t; inp.enterKeyHint = 'next';
+    inp.oninput = () => { day(k).todos[r].t = inp.value; save(); };
+    inp.onkeydown = e => { if(e.key==='Enter'){ e.preventDefault(); todo.querySelectorAll('input')[r+1]?.focus(); } };
+    row.append(m, inp); todo.append(row);
+  }
+  card('할 일  ·  왼쪽 칸: O → △ → X', todo);
+
+  // 감사한 것
+  const grat = el('div','grat');
+  for(let g=0;g<3;g++){
+    const row = el('div','grow'); row.append(el('span',null,g+1));
+    const inp = el('input'); inp.value = peek(k)?.grat[g] ?? ''; inp.enterKeyHint = 'next';
+    inp.oninput = () => { day(k).grat[g] = inp.value; save(); };
+    inp.onkeydown = e => { if(e.key==='Enter'){ e.preventDefault(); grat.querySelectorAll('input')[g+1]?.focus(); } };
+    row.append(inp); grat.append(row);
+  }
+  card('감사한 것', grat);
+
+  // 일기 + 키워드
+  card('일기', diaryCell(k, 'diary', PHONE_FS, '오늘 일기…'));
+  const kw = el('div','kw'), kin = el('input');
+  kin.placeholder = '키워드'; kin.value = peek(k)?.kw ?? '';
+  kin.oninput = () => { day(k).kw = kin.value; save(); };
+  kw.append(kin); card(null, kw);
+
+  // 이번 주 Focus
+  const focus = el('div','focus');
+  for(let i=0;i<FOCUS_ROWS;i++){
+    const row = el('div','frow'), inp = el('input');
+    inp.value = db.weeks[wk]?.focus[i] ?? '';
+    inp.oninput = () => { week(wk).focus[i] = inp.value; save(); };
+    row.append(inp); focus.append(row);
+  }
+  card('이번 주 Focus on', focus);
+
+  // 습관 (오늘 칸만)
+  const hab = el('div');
+  for(let i=0;i<HABITS;i++){
+    const row = el('div','dhab'), name = el('input');
+    name.placeholder = '습관 이름'; name.value = db.habitNames[i];
+    name.oninput = () => { db.habitNames[i] = name.value; save(); };
+    const on = db.weeks[wk]?.habits[i][wd];
+    const btn = el('button', on ? 'on' : '', '✓');
+    btn.onclick = () => { const w = week(wk); w.habits[i][wd] = !w.habits[i][wd]; btn.classList.toggle('on'); save(); };
+    row.append(name, btn); hab.append(row);
+  }
+  card(`Habit Tracker  ·  ${KDAYS[wd]}요일`, hab);
+
+  // 저장 / 백업
+  const io = el('div','io');
+  io.innerHTML = `<button class="exportTxt">${d.getMonth()+1}월 일기 txt로 저장</button><button class="exportJson">전체 백업 저장 (.json)</button><button class="importJson">백업 불러오기</button>`;
+  card(null, io);
+  bindIO(io);
+
+  // 옆으로 밀면 하루 넘기기
+  let sx = 0, sy = 0;
+  dv.addEventListener('touchstart', e => { sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, {passive:true});
+  dv.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy;
+    if(Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 2) goDay(addDays(d, dx < 0 ? 1 : -1));
+  }, {passive:true});
+
+  v.append(dv);
+  calibrate();
+}
+function goDay(d){
+  curDay = d; cur = monday(d);
+  renderDay(); scrollTo(0,0);
+}
+
+// ── header / months ──
+function renderHead(){
+  const thu = addDays(cur,3), m = thu.getMonth(), a = m - (m%2);
+  $('range').textContent = `${MON[a]} - ${MON[a+1]}`;
+  const box = $('months'); box.innerHTML = '';
+  for(let i=0;i<12;i++){
+    const btn = el('button', i===m ? 'on2' : i===a || i===a+1 ? 'on1' : '', i+1);
+    btn.onclick = () => go(monday(new Date(thu.getFullYear(), i, 1)));
+    box.append(btn);
+  }
+  document.querySelector('#weekView .exportTxt').textContent = `${thu.getMonth()+1}월 일기 txt로 저장`;
+}
+
+// ── side ──
+function renderCal(){
+  const base = calMonth ?? addDays(cur,3);
+  const y = base.getFullYear(), mo = base.getMonth();
+  $('calTitle').textContent = `${y}. ${mo+1}`;
+  const c = $('cal'); c.innerHTML = '';
+  'MTWTFSS'.split('').forEach(h => c.append(el('div','h',h)));
+  const start = monday(new Date(y,mo,1)), today = key(new Date());
+  const wk = new Set(DAYS.map((_,i)=>key(addDays(cur,i))));
+  for(let i=0;i<42;i++){
+    const d = addDays(start,i); if(i>=35 && d.getMonth()!==mo) break;
+    const k = key(d);
+    const btn = el('button', [d.getMonth()!==mo?'dim':'', wk.has(k)?'wk':'', k===today?'td':''].join(' '), d.getDate());
+    btn.onclick = () => go(monday(d));
+    c.append(btn);
+  }
+}
+function renderFocus(){
+  const wk = key(cur), f = $('focus'); f.innerHTML = '';
+  for(let i=0;i<FOCUS_ROWS;i++){
+    const row = el('div','frow'), inp = el('input');
+    inp.value = db.weeks[wk]?.focus[i] ?? '';
+    inp.oninput = () => { week(wk).focus[i] = inp.value; save(); };
+    row.append(inp); f.append(row);
+  }
+}
+function renderHabits(){
+  const wk = key(cur), h = $('habits'); h.innerHTML = '';
+  for(let i=0;i<HABITS;i++){
+    const box = el('div','habit'), name = el('input');
+    name.placeholder = '습관 이름'; name.value = db.habitNames[i];
+    name.oninput = () => { db.habitNames[i] = name.value; save(); };
+    const days = el('div','hdays');
+    'MTWTFSS'.split('').forEach((L,j) => {
+      const on = db.weeks[wk]?.habits[i][j];
+      const btn = el('button', on?'on':'', L);
+      btn.onclick = () => { const w = week(wk); w.habits[i][j] = !w.habits[i][j]; btn.classList.toggle('on'); save(); };
+      days.append(btn);
+    });
+    box.append(name, days); h.append(box);
+  }
+}
+
+function go(m){
+  cur = m; calMonth = null;
+  curDay = key(monday(new Date()))===key(m) ? new Date() : m;
+  render();
+}
+function render(){
+  if(PHONE.matches) renderDay();
+  else { renderHead(); renderBoard(); renderCal(); renderFocus(); renderHabits(); }
+}
+
+// ── export / import ──
+function download(name, text, type){
+  const a = el('a'); a.href = URL.createObjectURL(new Blob([text],{type})); a.download = name; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+}
+function exportTxt(){
+  // 주간판은 그 주의 목요일이 속한 달, 폰은 보고 있는 날의 달
+  const base = PHONE.matches ? curDay : addDays(cur,3), y = base.getFullYear(), m = base.getMonth();
+  const last = new Date(y, m+1, 0).getDate();
+  let out = `<${m+1}월>\n`, n = 0;
+  for(let d=1; d<=last; d++){
+    const t = db.days[key(new Date(y,m,d))]?.diary?.trim();
+    if(t){ out += `${m+1}/${d}:${t}\n`; n++; }
+  }
+  if(!n) return alert(`${m+1}월에 쓴 일기가 아직 없어.`);
+  download(`${y}. ${m+1}월.txt`, out, 'text/plain;charset=utf-8');
+}
+function bindIO(box){
+  box.querySelector('.exportTxt').onclick = exportTxt;
+  box.querySelector('.exportJson').onclick = () => download(`일기백업_${key(new Date())}.json`, JSON.stringify(db,null,1), 'application/json');
+  box.querySelector('.importJson').onclick = () => $('fileIn').click();
+}
+bindIO(document.querySelector('#weekView .io'));
+$('fileIn').onchange = async e => {
+  const f = e.target.files[0]; if(!f) return;
+  try {
+    const d = JSON.parse(await f.text());
+    if(!d.days) throw 0;
+    if(!confirm('백업을 불러오면 지금 저장된 내용이 백업 내용으로 바뀌어. 계속할까?')) return;
+    db = d; db.weeks ??= {}; db.habitNames ??= Array(HABITS).fill('');
+    save(); render();
+  } catch { alert('백업 파일을 읽지 못했어.'); }
+  e.target.value = '';
+};
+
+// ── controls ──
+$('btnPrev').onclick = () => go(addDays(cur,-7));
+$('btnNext').onclick = () => go(addDays(cur,7));
+$('btnToday').onclick = () => go(monday(new Date()));
+$('calPrev').onclick = () => { const b = calMonth ?? addDays(cur,3); calMonth = new Date(b.getFullYear(), b.getMonth()-1, 1); renderCal(); };
+$('calNext').onclick = () => { const b = calMonth ?? addDays(cur,3); calMonth = new Date(b.getFullYear(), b.getMonth()+1, 1); renderCal(); };
+const applyTheme = t => { document.documentElement.dataset.theme = t; try{ localStorage.setItem('wr-theme', t); }catch{} };
+try { applyTheme(localStorage.getItem('wr-theme') || 'light'); } catch { applyTheme('light'); }
+const toggleTheme = () => applyTheme(document.documentElement.dataset.theme==='dark' ? 'light' : 'dark');
+$('theme').onclick = toggleTheme;
+let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(calibrate, 120); });
+PHONE.addEventListener('change', render);
+// 웹에 올린 버전에서만: 인터넷 없이도 열리게 (더블클릭으로 연 file://에서는 안 씀)
+if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost'))
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+document.fonts?.ready.then(calibrate);
+
+render();
+</script>
+</body>
+</html>
