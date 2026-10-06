@@ -1,7 +1,7 @@
 ﻿// 인터넷이 끊겨도 일기앱이 열리게 하는 서비스 워커.
 // 앱 파일과 글꼴만 저장해 둔다. 일기 내용은 여기서 다루지 않는다.
 // index.html을 고쳐서 올릴 때 VERSION을 올리면 옛 캐시가 지워진다.
-const VERSION = 'v3';
+const VERSION = 'v4';
 const CACHE = 'weekly-record-' + VERSION;
 const CORE = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 const FONT_HOSTS = ['fonts.googleapis.com', 'fonts.gstatic.com'];

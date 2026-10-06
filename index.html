@@ -149,6 +149,26 @@ button{cursor:pointer}
 .dc h4 .habEdit{float:right;border:0;background:var(--pill);border-radius:6px;padding:2px 9px;font-size:11.5px;color:var(--ink);margin-top:-2px}
 .dhab button{width:34px;height:34px;flex:none;border:1.5px solid var(--grid);border-radius:9px;background:transparent;font-size:16px;color:var(--paper)}
 .dhab button.on{background:var(--ink);border-color:var(--ink)}
+/* ── 동기화 ── */
+.syncBox{display:flex;flex-direction:column;gap:6px}
+.syncBox h3{margin-bottom:4px}
+.syncBox .st{font-size:12.5px;color:var(--sub);text-align:center;line-height:1.5}
+.syncBox button{border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:8px;font-size:12.5px}
+.syncBox button.primary{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.syncBox .link{border:0;background:transparent;color:var(--sub);font-size:11.5px;text-decoration:underline;padding:2px}
+.dv .syncBox{padding:12px;gap:8px}
+.dv .syncBox button{font-size:15px;padding:12px}
+.dv .syncBox .link{font-size:13px;padding:4px}
+#pwDlg{border:0;border-radius:14px;padding:20px;width:min(360px,calc(100vw - 32px));background:var(--paper);color:var(--ink);box-shadow:0 10px 40px rgba(0,0,0,.25)}
+#pwDlg::backdrop{background:rgba(0,0,0,.35)}
+#pwDlg h3{margin:0 0 8px;font-size:17px}
+#pwDlg p{margin:0 0 12px;font-size:13.5px;line-height:1.6;color:var(--sub)}
+#pwDlg input{display:block;width:100%;font-size:16px;padding:10px 12px;margin-bottom:8px;border:1px solid var(--grid);border-radius:8px;background:var(--bg)}
+#pwDlg input[hidden]{display:none}
+#pwDlg .err{color:var(--over);min-height:1em;margin:0 0 8px}
+#pwDlg .btns{display:flex;gap:8px;justify-content:flex-end}
+#pwDlg .btns button{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:9px 16px;font-size:15px}
+#pwDlg .btns .primary{background:var(--ink);color:var(--paper);border-color:var(--ink)}
 .dv .io{padding:12px;gap:8px}
 .dv .io button{font-size:15px;padding:12px}
 </style>
@@ -164,7 +184,7 @@ button{cursor:pointer}
   </div>
   <div class="months" id="months"></div>
   <button class="toggle" id="theme" title="다크 모드"></button>
-  <div class="save-state saveState">자동 저장됨</div>
+  <div class="save-state"><span class="saveState">자동 저장됨</span> <span class="syncState"></span></div>
 </div>
 
 <div class="head">
@@ -188,6 +208,7 @@ button{cursor:pointer}
       <h3>Habit Tracker</h3>
       <div class="habits" id="habits"></div>
     </div>
+    <div class="card syncBox"></div>
     <div class="card io">
       <button class="exportTxt"></button>
       <button class="exportJson">전체 백업 저장 (.json)</button>
@@ -200,6 +221,18 @@ button{cursor:pointer}
 
 <div id="dayView"></div>
 <input type="file" id="fileIn" accept=".json" hidden>
+
+<dialog id="pwDlg">
+  <form method="dialog">
+    <h3 id="pwTitle"></h3>
+    <p id="pwMsg"></p>
+    <input type="password" id="pw1" autocomplete="current-password">
+    <input type="password" id="pw2" placeholder="한 번 더 입력" autocomplete="new-password">
+    <input type="text" id="pwCode" placeholder="Dropbox에서 복사한 코드" autocomplete="off">
+    <p class="err" id="pwErr"></p>
+    <div class="btns"><button value="cancel" formnovalidate>취소</button><button value="ok" id="pwOk" class="primary">확인</button></div>
+  </form>
+</dialog>
 
 <script>
 const TARGET = 600, TODO_ROWS = 10, HABITS = 6, FOCUS_ROWS = 5;
@@ -233,10 +266,13 @@ function save(){
   saveTimer = setTimeout(() => {
     try { localStorage.setItem(DB_KEY, JSON.stringify(db)); setState('자동 저장됨'); }
     catch { setState('⚠ 저장 실패 — 백업 저장을 눌러줘'); }
+    markDirty();
   }, 300);
 }
-const day = k => db.days[k] ??= { todos: Array.from({length:TODO_ROWS},()=>({s:0,t:''})), grat:['','',''], diary:'', kw:'' };
-const week = k => db.weeks[k] ??= { focus: Array(FOCUS_ROWS).fill(''), habits: Array.from({length:HABITS},()=>Array(7).fill(false)) };
+// day()/week()는 고칠 때만 부른다. 고친 시각(u)을 찍어 두고, 동기화 때 기기끼리 더 최근 것을 고른다
+const day = k => { const r = db.days[k] ??= { todos: Array.from({length:TODO_ROWS},()=>({s:0,t:''})), grat:['','',''], diary:'', kw:'' }; r.u = Date.now(); return r; };
+const week = k => { const r = db.weeks[k] ??= { focus: Array(FOCUS_ROWS).fill(''), habits: Array.from({length:HABITS},()=>Array(7).fill(false)) }; r.u = Date.now(); return r; };
+const setHabitName = (i, v) => { db.habitNames[i] = v; db.habitNamesU = Date.now(); save(); };
 const peek = k => db.days[k];
 
 // ── state ──
@@ -371,7 +407,7 @@ function renderDay(){
   prev.onclick = () => goDay(addDays(d,-1)); next.onclick = () => goDay(addDays(d,1));
   // 날짜를 누르면 달력이 뜸
   const date = el('div','dvDate' + (isToday ? ' today' : ''),
-    `<span class="d">${d.getMonth()+1}월 ${d.getDate()}일 ${KDAYS[wd]}</span><small><span class="saveState">자동 저장됨</span></small>`);
+    `<span class="d">${d.getMonth()+1}월 ${d.getDate()}일 ${KDAYS[wd]}</span><small><span class="saveState">자동 저장됨</span> <span class="syncState">${syncText}</span></small>`);
   const pick = el('input'); pick.type = 'date'; pick.value = k;
   pick.onchange = () => { if(pick.value){ const [y,m,dd] = pick.value.split('-').map(Number); goDay(new Date(y,m-1,dd)); } };
   date.querySelector('.d').append(pick);
@@ -438,7 +474,7 @@ function renderDay(){
     let name;
     if(editing){
       name = el('input'); name.placeholder = '습관 이름'; name.value = db.habitNames[i];
-      name.oninput = () => { db.habitNames[i] = name.value; save(); };
+      name.oninput = () => setHabitName(i, name.value);
     } else name = el('span','hname', db.habitNames[i].replace(/</g,'&lt;'));
     const on = db.weeks[wk]?.habits[i][wd];
     const btn = el('button', on ? 'on' : '', '✓');
@@ -457,6 +493,7 @@ function renderDay(){
   io.innerHTML = `<button class="exportTxt">${d.getMonth()+1}월 일기 txt로 저장</button><button class="exportJson">전체 백업 저장 (.json)</button><button class="importJson">백업 불러오기</button>`;
   card(null, io);
   bindIO(io);
+  const sb = el('div','syncBox'); card('동기화', sb); renderSyncBox(sb);
 
   // 옆으로 밀면 하루 넘기기
   let sx = 0, sy = 0;
@@ -518,7 +555,7 @@ function renderHabits(){
   for(let i=0;i<HABITS;i++){
     const box = el('div','habit'), name = el('input');
     name.placeholder = '습관 이름'; name.value = db.habitNames[i];
-    name.oninput = () => { db.habitNames[i] = name.value; save(); };
+    name.oninput = () => setHabitName(i, name.value);
     const days = el('div','hdays');
     'MTWTFSS'.split('').forEach((L,j) => {
       const on = db.weeks[wk]?.habits[i][j];
@@ -537,7 +574,7 @@ function go(m){
 }
 function render(){
   if(PHONE.matches) renderDay();
-  else { renderHead(); renderBoard(); renderCal(); renderFocus(); renderHabits(); }
+  else { renderHead(); renderBoard(); renderCal(); renderFocus(); renderHabits(); renderSyncBox(document.querySelector('#weekView .syncBox')); }
 }
 
 // ── export / import ──
@@ -570,10 +607,247 @@ $('fileIn').onchange = async e => {
     if(!d.days) throw 0;
     if(!confirm('백업을 불러오면 지금 저장된 내용이 백업 내용으로 바뀌어. 계속할까?')) return;
     db = d; db.weeks ??= {}; db.habitNames ??= Array(HABITS).fill('');
+    // 불러온 내용이 동기화에서 이기도록 지금 시각을 찍는다
+    const now = Date.now();
+    Object.values(db.days).forEach(r => r.u = now); Object.values(db.weeks).forEach(r => r.u = now); db.habitNamesU = now;
     save(); render();
   } catch { alert('백업 파일을 읽지 못했어.'); }
   e.target.value = '';
 };
+
+// ── Dropbox 동기화 ──
+// 일기는 이 기기 안에서 태희가 정한 비밀번호로 AES-GCM 암호화한 다음, Dropbox 앱 폴더의 diary.enc 하나로 올린다.
+// Dropbox는 암호문만 보고, 비밀번호는 어디에도 전송되지 않는다. 비밀번호를 잊으면 복구할 수 없다.
+const DBX_APP = '81x109oxzg3vo4x', DBX_FILE = '/diary.enc', SYNC_KEY = 'wr-sync', PBKDF2_ITER = 600000;
+const CAN_SYNC = !!(window.crypto?.subtle) && location.protocol !== 'file:';
+let sync; try { sync = JSON.parse(localStorage.getItem(SYNC_KEY)) || {}; } catch { sync = {}; }
+let cryptoKey = null, syncText = '', syncing = false, syncTimer;
+const saveSync = () => { try { localStorage.setItem(SYNC_KEY, JSON.stringify(sync)); } catch {} };
+const setSync = t => { syncText = t; document.querySelectorAll('.syncState').forEach(e => e.textContent = t); };
+
+const b64 = u8 => { let s = ''; for(let i=0;i<u8.length;i+=0x8000) s += String.fromCharCode(...u8.subarray(i,i+0x8000)); return btoa(s); };
+const unb64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+const b64url = u8 => b64(u8).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+const redirectUri = () => location.origin + location.pathname.replace(/index\.html$/,'');
+
+async function deriveKey(pw, salt){
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({name:'PBKDF2', salt, iterations:PBKDF2_ITER, hash:'SHA-256'}, base, {name:'AES-GCM', length:256}, true, ['encrypt','decrypt']);
+}
+async function loadKey(){
+  if(!cryptoKey && sync.key) cryptoKey = await crypto.subtle.importKey('raw', unb64(sync.key), 'AES-GCM', false, ['encrypt','decrypt']);
+  return cryptoKey;
+}
+async function encrypt(obj){
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt({name:'AES-GCM', iv}, await loadKey(), new TextEncoder().encode(JSON.stringify(obj)));
+  return JSON.stringify({ v:1, salt: sync.salt, iv: b64(iv), ct: b64(new Uint8Array(ct)) });
+}
+async function decrypt(file, key){
+  const pt = await crypto.subtle.decrypt({name:'AES-GCM', iv: unb64(file.iv)}, key, unb64(file.ct));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+
+// Dropbox 로그인 (PKCE). 보통은 Dropbox로 갔다가 돌아오고, 안 돌아오면 코드를 복사해 붙여 넣는다
+async function connect(manual){
+  const v = b64url(crypto.getRandomValues(new Uint8Array(32)));
+  const c = b64url(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(v))));
+  const p = new URLSearchParams({ client_id: DBX_APP, response_type:'code', code_challenge:c, code_challenge_method:'S256', token_access_type:'offline' });
+  if(manual){
+    window.open('https://www.dropbox.com/oauth2/authorize?' + p, '_blank');
+    const code = await askDialog({ title:'코드로 연결', msg:'열린 Dropbox 화면에서 "허용"을 누르면 코드가 나와. 그 코드를 복사해서 여기에 붙여 넣어 줘.', code:true });
+    if(!code) return;
+    await getToken({ code: code.trim(), grant_type:'authorization_code', code_verifier: v, client_id: DBX_APP });
+    await unlock();
+  } else {
+    const state = b64url(crypto.getRandomValues(new Uint8Array(12)));
+    localStorage.setItem('wr-pkce', JSON.stringify({ v, state }));
+    p.set('redirect_uri', redirectUri()); p.set('state', state);
+    location.href = 'https://www.dropbox.com/oauth2/authorize?' + p;
+  }
+}
+async function getToken(params){
+  const r = await fetch('https://api.dropboxapi.com/oauth2/token', { method:'POST', body: new URLSearchParams(params) });
+  const j = await r.json();
+  if(!r.ok) throw new Error('token: ' + (j.error_description || j.error || r.status));
+  sync.access = j.access_token; sync.exp = Date.now() + (j.expires_in||14400)*1000;
+  if(j.refresh_token) sync.refresh = j.refresh_token;
+  saveSync();
+}
+async function handleRedirect(){
+  const q = new URLSearchParams(location.search);
+  if(!q.has('code') && !q.has('error')) return;
+  history.replaceState(null, '', redirectUri());
+  let pk; try { pk = JSON.parse(localStorage.getItem('wr-pkce')); } catch {}
+  localStorage.removeItem('wr-pkce');
+  if(!q.has('code') || !pk || q.get('state') !== pk.state) { setSync('Dropbox 연결이 취소됐어'); return; }
+  try {
+    await getToken({ code: q.get('code'), grant_type:'authorization_code', code_verifier: pk.v, client_id: DBX_APP, redirect_uri: redirectUri() });
+    await unlock();
+  } catch(e) { console.error(e); setSync('⚠ Dropbox 연결 실패'); }
+}
+async function token(){
+  if(sync.access && sync.exp > Date.now() + 60000) return sync.access;
+  if(!sync.refresh) throw new Error('not connected');
+  await getToken({ grant_type:'refresh_token', refresh_token: sync.refresh, client_id: DBX_APP });
+  return sync.access;
+}
+async function dbx(url, opts = {}){
+  const r = await fetch(url, { method:'POST', ...opts, headers: { Authorization: 'Bearer ' + await token(), ...opts.headers } });
+  if(r.status === 409){ const j = await r.json().catch(()=>({})); const e = new Error(j.error_summary || 'conflict'); e.dbx = j.error_summary || ''; throw e; }
+  if(r.status === 401){ sync.exp = 0; saveSync(); }
+  if(!r.ok) throw new Error('dropbox ' + r.status);
+  return r;
+}
+async function remoteMeta(){
+  try {
+    const r = await dbx('https://api.dropboxapi.com/2/files/get_metadata', { headers:{'Content-Type':'application/json'}, body: JSON.stringify({ path: DBX_FILE }) });
+    return await r.json();
+  } catch(e) { if(e.dbx?.startsWith('path/not_found')) return null; throw e; }
+}
+async function download(){
+  const r = await dbx('https://content.dropboxapi.com/2/files/download', { headers:{'Dropbox-API-Arg': JSON.stringify({ path: DBX_FILE })} });
+  return JSON.parse(await r.text());
+}
+async function upload(text, rev){
+  const arg = { path: DBX_FILE, mode: rev ? { '.tag':'update', update: rev } : 'add', mute: true, autorename: false };
+  const r = await dbx('https://content.dropboxapi.com/2/files/upload', { headers:{'Dropbox-API-Arg': JSON.stringify(arg), 'Content-Type':'application/octet-stream'}, body: text });
+  return (await r.json()).rev;
+}
+
+// 비밀번호 정하기(처음 기기) 또는 입력하기(두 번째 기기부터)
+async function unlock(){
+  setSync('Dropbox 확인 중…');
+  const meta = await remoteMeta();
+  if(meta){
+    const file = await download();
+    let err = '';
+    for(;;){
+      const pw = await askDialog({ title:'일기 비밀번호', msg:'다른 기기에서 정한 일기 비밀번호를 입력해 줘.', err });
+      if(pw === null){ setSync('비밀번호를 입력해야 동기화돼'); renderSyncBoxes(); return; }
+      setSync('비밀번호 확인 중…');
+      const k = await deriveKey(pw, unb64(file.salt));
+      try { await decrypt(file, k); } catch { err = '비밀번호가 달라. 다시 입력해 줘.'; continue; }
+      sync.salt = file.salt; sync.key = b64(new Uint8Array(await crypto.subtle.exportKey('raw', k)));
+      break;
+    }
+  } else {
+    const pw = await askDialog({ title:'일기 비밀번호 정하기', msg:'이 비밀번호로 일기를 잠가서 Dropbox에 올려. <b>잊어버리면 나도, Dropbox도 절대 되살릴 수 없어.</b> 종이에 적어서 집에 보관해 줘. (8자 이상)', confirm:true });
+    if(pw === null){ setSync('비밀번호를 정해야 동기화돼'); renderSyncBoxes(); return; }
+    setSync('잠금 준비 중…');
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const k = await deriveKey(pw, salt);
+    sync.salt = b64(salt); sync.key = b64(new Uint8Array(await crypto.subtle.exportKey('raw', k)));
+  }
+  cryptoKey = null; sync.rev = null; sync.dirty = true; saveSync();
+  renderSyncBoxes();
+  await doSync();
+}
+
+// 기록마다 고친 시각(u)이 더 최근인 쪽을 남긴다
+function merge(remote){
+  let changed = false, localNewer = false;
+  const pick = (a, b) => (b?.u||0) > (a?.u||0);
+  for(const kind of ['days','weeks']){
+    const L = db[kind], R = remote[kind] || {};
+    for(const k in R) if(!L[k] || pick(L[k], R[k])) { L[k] = R[k]; changed = true; }
+    for(const k in L) if(!R[k] || pick(R[k], L[k])) localNewer = true;
+  }
+  const lu = db.habitNamesU||0, ru = remote.habitNamesU||0;
+  if(remote.habitNames && ru > lu){ db.habitNames = remote.habitNames; db.habitNamesU = ru; changed = true; }
+  else if(lu > ru) localNewer = true;
+  return { changed, localNewer };
+}
+function markDirty(){
+  if(!sync.key) return;
+  sync.dirty = true; saveSync();
+  clearTimeout(syncTimer); syncTimer = setTimeout(doSync, 3000);
+}
+async function doSync(retry = 0){
+  if(!CAN_SYNC || !sync.refresh || !sync.key) return;
+  if(syncing){ clearTimeout(syncTimer); syncTimer = setTimeout(doSync, 2000); return; }
+  if(!navigator.onLine){ setSync('오프라인 · 연결되면 맞출게'); return; }
+  syncing = true; setSync('동기화 중…');
+  try {
+    const meta = await remoteMeta();
+    let up = sync.dirty || !meta;
+    if(meta && meta.rev !== sync.rev){
+      const remote = await decrypt(await download(), await loadKey());
+      const { changed, localNewer } = merge(remote);
+      if(changed){
+        try { localStorage.setItem(DB_KEY, JSON.stringify(db)); } catch {}
+        const a = document.activeElement;
+        if(a && /INPUT|TEXTAREA/.test(a.tagName)) a.addEventListener('blur', () => render(), { once:true });
+        else render();
+      }
+      up = up || localNewer;
+      sync.rev = meta.rev;
+    }
+    if(up){
+      const text = await encrypt({ days: db.days, weeks: db.weeks, habitNames: db.habitNames, habitNamesU: db.habitNamesU || 0 });
+      sync.rev = await upload(text, meta ? meta.rev : null);
+      sync.dirty = false;
+    }
+    sync.last = Date.now(); saveSync();
+    const t = new Date(sync.last);
+    setSync(`☁ 동기화됨 ${pad(t.getHours())}:${pad(t.getMinutes())}`);
+  } catch(e) {
+    console.error(e);
+    syncing = false;
+    if(e.dbx?.startsWith('path/conflict') && retry < 2) return doSync(retry + 1);
+    if(String(e.message).includes('OperationError')) setSync('⚠ 비밀번호가 바뀌었어. 연결 끊고 다시 연결해 줘');
+    else if(String(e.message).startsWith('token')) { setSync('⚠ Dropbox 다시 연결이 필요해'); }
+    else setSync('⚠ 동기화 실패 · 잠시 뒤 다시 할게');
+    return;
+  }
+  syncing = false;
+}
+function disconnect(){
+  if(!confirm('이 기기에서 Dropbox 연결을 끊을까? 이 기기에 저장된 일기와 Dropbox에 있는 일기는 그대로 남아.')) return;
+  sync = {}; cryptoKey = null; saveSync(); setSync(''); renderSyncBoxes();
+}
+
+function renderSyncBox(box){
+  if(!box) return;
+  box.innerHTML = PHONE.matches ? '' : '<h3>동기화</h3>';
+  const btn = (txt, cls, fn) => { const b = el('button', cls, txt); b.onclick = fn; box.append(b); };
+  if(!CAN_SYNC){
+    box.append(el('div','st','동기화는 웹 주소에서만 돼<br><b>taehee-lab.github.io/diary</b>'));
+  } else if(!sync.refresh){
+    box.append(el('div','st','폰·아이패드·컴퓨터 일기를 Dropbox로 맞춰. 일기는 비밀번호로 잠근 상태로만 올라가.'));
+    btn('Dropbox 연결', 'primary', () => connect(false));
+    btn('연결 화면에서 안 돌아오면: 코드로 연결', 'link', () => connect(true).catch(e => { console.error(e); setSync('⚠ Dropbox 연결 실패'); }));
+  } else if(!sync.key){
+    box.append(el('div','st','Dropbox는 연결됐어. 일기 비밀번호만 남았어.'));
+    btn('비밀번호 입력', 'primary', () => unlock().catch(e => { console.error(e); setSync('⚠ 동기화 실패'); }));
+    btn('연결 끊기', 'link', disconnect);
+  } else {
+    box.append(el('div','st syncState', syncText || '☁ 연결됨'));
+    btn('지금 동기화', '', () => doSync());
+    btn('연결 끊기', 'link', disconnect);
+  }
+}
+const renderSyncBoxes = () => document.querySelectorAll('.syncBox').forEach(renderSyncBox);
+
+// 비밀번호/코드 입력 창
+function askDialog({ title, msg, confirm: twice = false, code = false, err = '' }){
+  const d = $('pwDlg');
+  $('pwTitle').textContent = title; $('pwMsg').innerHTML = msg; $('pwErr').textContent = err;
+  const p1 = $('pw1'), p2 = $('pw2'), pc = $('pwCode');
+  p1.value = p2.value = pc.value = '';
+  p1.hidden = code; p2.hidden = !twice; pc.hidden = !code;
+  p1.placeholder = twice ? '새 비밀번호' : '비밀번호';
+  return new Promise(res => {
+    $('pwOk').onclick = e => {
+      if(code){ if(!pc.value.trim()){ e.preventDefault(); $('pwErr').textContent = '코드를 붙여 넣어 줘.'; } return; }
+      if(twice && p1.value.length < 8){ e.preventDefault(); $('pwErr').textContent = '8자 이상으로 정해 줘.'; return; }
+      if(twice && p1.value !== p2.value){ e.preventDefault(); $('pwErr').textContent = '두 번 입력한 비밀번호가 달라.'; return; }
+      if(!p1.value){ e.preventDefault(); $('pwErr').textContent = '비밀번호를 입력해 줘.'; }
+    };
+    d.onclose = () => res(d.returnValue === 'ok' ? (code ? pc.value : p1.value) : null);
+    d.returnValue = ''; d.showModal(); (code ? pc : p1).focus();
+  });
+}
 
 // ── controls ──
 $('btnPrev').onclick = () => go(addDays(cur,-7));
@@ -593,6 +867,13 @@ if('serviceWorker' in navigator && (location.protocol === 'https:' || location.h
 document.fonts?.ready.then(calibrate);
 
 render();
+// 동기화: 열 때, 다시 화면에 돌아올 때, 인터넷이 다시 될 때, 앱을 떠날 때(고친 게 있으면)
+if(CAN_SYNC){
+  if(sync.key && sync.last){ const t = new Date(sync.last); setSync(`☁ ${pad(t.getHours())}:${pad(t.getMinutes())}`); }
+  handleRedirect().finally(() => doSync());
+  document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible' || sync.dirty) doSync(); });
+  addEventListener('online', () => doSync());
+}
 </script>
 </body>
 </html>
