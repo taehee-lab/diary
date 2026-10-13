@@ -61,8 +61,7 @@ button{cursor:pointer}
 .todo{display:flex;flex-direction:column}
 .trow{display:flex;border-bottom:1px solid var(--line);height:25px}
 .trow:last-child{border-bottom:0}
-.mark{width:24px;flex:none;border:0;border-right:1px solid var(--line);background:transparent;font-family:Inter;font-size:12px;font-weight:500;padding:0}
-.mark.x{color:var(--mark-x)}
+.mark{width:24px;flex:none;border:0;border-right:1px solid var(--line);background:transparent;font-family:Inter;font-size:12px;font-weight:700;padding:0;color:var(--mark-x);-webkit-text-stroke:.35px currentColor}
 .trow input{flex:1;min-width:0;border:0;background:transparent;padding:0 6px;font-size:12.5px;outline:none}
 
 /* gratitude */
@@ -370,12 +369,30 @@ function calibrate(){
 function fit(ta){
   const cfg = ta._cfg, targetH = ta._targetH;
   if(!targetH) return;
-  const size = fs => { ta.style.setProperty('--fs', fs + 'px'); ta.style.setProperty('--lh', fs * cfg.lh / cfg.fs + 'px'); };
+  const size = (fs, lh = fs * cfg.lh / cfg.fs) => { ta.style.setProperty('--fs', fs + 'px'); ta.style.setProperty('--lh', lh + 'px'); };
   ta.style.height = targetH + 'px';
-  let fs = cfg.fs; size(fs);
-  while(ta.scrollHeight > targetH && fs > cfg.min){ fs = Math.max(cfg.min, fs - .25); size(fs); }
+  size(cfg.fs);
+  if(ta.scrollHeight <= targetH) return;
+  size(cfg.min);
   // 가장 작은 글씨로도 안 들어가면 그때만 칸을 늘린다
-  if(ta.scrollHeight > targetH) ta.style.height = ta.scrollHeight + 'px';
+  if(ta.scrollHeight > targetH){ ta.style.height = ta.scrollHeight + 'px'; return; }
+  // 칸에 들어가는 가장 큰 글씨를 찾는다
+  let lo = cfg.min, hi = cfg.fs;
+  while(hi - lo > .05){ const mid = (lo + hi) / 2; size(mid); if(ta.scrollHeight <= targetH) lo = mid; else hi = mid; }
+  size(lo);
+  // 아래에 빈 줄이 남지 않게 줄 간격을 살짝 늘려서 마지막 줄을 점선에 맞춘다
+  const cs = getComputedStyle(ta), pad = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+  const m = el('div'); Object.assign(m.style, {
+    position:'absolute', visibility:'hidden', whiteSpace:'pre-wrap', wordBreak:'break-all',
+    width: (ta.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)) + 'px',
+    fontFamily: cs.fontFamily, fontSize: lo + 'px', lineHeight: '100px'
+  });
+  m.textContent = ta.value + '​'; document.body.append(m);
+  const lines = Math.round(m.offsetHeight / 100);
+  m.remove();
+  // 재 본 줄 수가 실제 칸과 한 줄 어긋날 수 있어서 한 줄 더 많은 경우도 해 본다
+  for(const n of [lines, lines + 1]){ if(n < 1) continue; size(lo, (targetH - pad) / n); if(ta.scrollHeight <= targetH) return; }
+  size(lo);
 }
 
 // ── 폰: 하루 한 장 ──
