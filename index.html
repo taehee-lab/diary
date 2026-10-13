@@ -249,17 +249,23 @@ const DB_KEY = 'taehee-weekly-record';
 let db;
 try { db = JSON.parse(localStorage.getItem(DB_KEY)) || {}; } catch { db = {}; }
 db.days ??= {}; db.weeks ??= {}; db.habitNames ??= Array(HABITS).fill('');
-let saveTimer;
+let saveTimer, savePending = false;
 const setState = t => document.querySelectorAll('.saveState').forEach(e => e.textContent = t);
+function writeNow(){
+  clearTimeout(saveTimer); savePending = false;
+  try { localStorage.setItem(DB_KEY, JSON.stringify(db)); setState('자동 저장됨'); }
+  catch { setState('⚠ 저장 실패 — 백업 저장을 눌러줘'); }
+  markDirty();
+}
 function save(){
   setState('저장 중…');
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => {
-    try { localStorage.setItem(DB_KEY, JSON.stringify(db)); setState('자동 저장됨'); }
-    catch { setState('⚠ 저장 실패 — 백업 저장을 눌러줘'); }
-    markDirty();
-  }, 300);
+  clearTimeout(saveTimer); savePending = true;
+  saveTimer = setTimeout(writeNow, 300);
 }
+// 쓰자마자 앱을 끄거나 다른 앱으로 넘어가도 마지막 글자가 날아가지 않게 바로 저장
+const flushSave = () => { if(savePending) writeNow(); };
+addEventListener('pagehide', flushSave);
+document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'hidden') flushSave(); });
 // day()/week()는 고칠 때만 부른다. 고친 시각(u)을 찍어 두고, 동기화 때 기기끼리 더 최근 것을 고른다
 const day = k => { const r = db.days[k] ??= { todos: Array.from({length:TODO_ROWS},()=>({s:0,t:''})), grat:['','',''], diary:'', kw:'' }; r.u = Date.now(); return r; };
 const week = k => { const r = db.weeks[k] ??= { focus: Array(FOCUS_ROWS).fill(''), habits: Array.from({length:HABITS},()=>Array(7).fill(false)) }; r.u = Date.now(); return r; };
@@ -298,7 +304,7 @@ function renderBoard(){
       const inp = el('input'); inp.value = data.t;
       inp.oninput = () => { day(k).todos[r].t = inp.value; save(); };
       inp.onkeydown = e => { if(e.key==='Enter'){ e.preventDefault(); c.querySelectorAll('input')[r+1]?.focus(); } };
-      row.append(m, inp); c.append(row);
+      todoInput(inp); row.append(m, inp); c.append(row);
     }
     b.append(c);
   });
@@ -347,6 +353,7 @@ function diaryCell(k, cls, cfg, placeholder){
 
 // 칸 너비 기준으로 600자가 딱 차는 높이를 계산 (화면에 보이는 칸만)
 function calibrate(){
+  document.querySelectorAll('.trow input').forEach(fitLine);
   document.querySelectorAll('.diary textarea').forEach(ta => {
     if(!ta.offsetParent) return;
     const cs = getComputedStyle(ta), cfg = ta._cfg;
@@ -364,6 +371,25 @@ function calibrate(){
     ta.parentNode.querySelector('.target').style.top = (padTop + lines*cfg.lh) + 'px';
     ta._upd();
   });
+}
+// 할 일이 칸보다 길면 옆으로 밀리지 않게 글씨를 줄여서 한 번에 다 보이게 한다 (기본 글씨의 60%까지)
+function fitLine(inp){
+  inp.style.fontSize = '';
+  if(!inp.offsetParent || inp.scrollWidth <= inp.clientWidth) return;
+  const base = parseFloat(getComputedStyle(inp).fontSize);
+  let lo = base * .6, hi = base;
+  inp.style.fontSize = lo + 'px';
+  if(inp.scrollWidth <= inp.clientWidth){
+    while(hi - lo > .1){ const mid = (lo + hi) / 2; inp.style.fontSize = mid + 'px'; if(inp.scrollWidth <= inp.clientWidth) lo = mid; else hi = mid; }
+    inp.style.fontSize = lo + 'px';
+  }
+  if(document.activeElement !== inp) inp.scrollLeft = 0;
+}
+// 할 일 입력칸: 컴퓨터는 쓰는 동안 바로 줄이고, 폰은 16px보다 작으면 아이폰이 화면을 확대해 버려서 다 쓰고 나갈 때 줄인다
+function todoInput(inp){
+  inp.addEventListener('input', () => { if(!PHONE.matches) fitLine(inp); });
+  inp.addEventListener('focus', () => { if(PHONE.matches) inp.style.fontSize = ''; });
+  inp.addEventListener('blur', () => fitLine(inp));
 }
 // 600자 칸을 넘치면 글씨와 줄 간격을 같은 비율로 줄여서 칸 안에 넣는다
 function fit(ta){
@@ -432,7 +458,7 @@ function renderDay(){
     const inp = el('input'); inp.value = data.t; inp.enterKeyHint = 'next';
     inp.oninput = () => { day(k).todos[r].t = inp.value; save(); };
     inp.onkeydown = e => { if(e.key==='Enter'){ e.preventDefault(); todo.querySelectorAll('input')[r+1]?.focus(); } };
-    row.append(m, inp); todo.append(row);
+    todoInput(inp); row.append(m, inp); todo.append(row);
   }
   card('할 일  ·  왼쪽 칸: O → △ → X', todo);
 
