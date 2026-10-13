@@ -705,7 +705,7 @@ async function remoteMeta(){
     return await r.json();
   } catch(e) { if(e.dbx?.startsWith('path/not_found')) return null; throw e; }
 }
-async function download(){
+async function dbxDownload(){
   const r = await dbx('https://content.dropboxapi.com/2/files/download', { headers:{'Dropbox-API-Arg': JSON.stringify({ path: DBX_FILE })} });
   return JSON.parse(await r.text());
 }
@@ -720,7 +720,7 @@ async function unlock(){
   setSync('Dropbox 확인 중…');
   const meta = await remoteMeta();
   if(meta){
-    const file = await download();
+    const file = await dbxDownload();
     let err = '';
     for(;;){
       const pw = await askDialog({ title:'일기 비밀번호', msg:'다른 기기에서 정한 일기 비밀번호를 입력해 줘.', err });
@@ -772,7 +772,7 @@ async function doSync(retry = 0){
     const meta = await remoteMeta();
     let up = sync.dirty || !meta;
     if(meta && meta.rev !== sync.rev){
-      const remote = await decrypt(await download(), await loadKey());
+      const remote = await decrypt(await dbxDownload(), await loadKey());
       const { changed, localNewer } = merge(remote);
       if(changed){
         try { localStorage.setItem(DB_KEY, JSON.stringify(db)); } catch {}
