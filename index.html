@@ -353,7 +353,7 @@ function diaryCell(k, cls, cfg, placeholder){
 
 // 칸 너비 기준으로 600자가 딱 차는 높이를 계산 (화면에 보이는 칸만)
 function calibrate(){
-  document.querySelectorAll('.trow input').forEach(fitLine);
+  document.querySelectorAll('.trow input, .frow input').forEach(fitLine);
   document.querySelectorAll('.diary textarea').forEach(ta => {
     if(!ta.offsetParent) return;
     const cs = getComputedStyle(ta), cfg = ta._cfg;
@@ -372,7 +372,7 @@ function calibrate(){
     ta._upd();
   });
 }
-// 할 일이 칸보다 길면 옆으로 밀리지 않게 글씨를 줄여서 한 번에 다 보이게 한다 (기본 글씨의 60%까지)
+// 할 일·Focus on이 칸보다 길면 옆으로 밀리지 않게 글씨를 줄여서 한 번에 다 보이게 한다 (기본 글씨의 60%까지)
 function fitLine(inp){
   inp.style.fontSize = '';
   if(!inp.offsetParent || inp.scrollWidth <= inp.clientWidth) return;
@@ -385,7 +385,7 @@ function fitLine(inp){
   }
   if(document.activeElement !== inp) inp.scrollLeft = 0;
 }
-// 할 일 입력칸: 컴퓨터는 쓰는 동안 바로 줄이고, 폰은 16px보다 작으면 아이폰이 화면을 확대해 버려서 다 쓰고 나갈 때 줄인다
+// 할 일·Focus on 입력칸: 컴퓨터는 쓰는 동안 바로 줄이고, 폰은 16px보다 작으면 아이폰이 화면을 확대해 버려서 다 쓰고 나갈 때 줄인다
 function todoInput(inp){
   inp.addEventListener('input', () => { if(!PHONE.matches) fitLine(inp); });
   inp.addEventListener('focus', () => { if(PHONE.matches) inp.style.fontSize = ''; });
@@ -486,7 +486,7 @@ function renderDay(){
     const row = el('div','frow'), inp = el('input');
     inp.value = db.weeks[wk]?.focus[i] ?? '';
     inp.oninput = () => { week(wk).focus[i] = inp.value; save(); };
-    row.append(inp); focus.append(row);
+    todoInput(inp); row.append(inp); focus.append(row);
   }
   card('이번 주 Focus on', focus);
 
@@ -573,8 +573,9 @@ function renderFocus(){
     const row = el('div','frow'), inp = el('input');
     inp.value = db.weeks[wk]?.focus[i] ?? '';
     inp.oninput = () => { week(wk).focus[i] = inp.value; save(); };
-    row.append(inp); f.append(row);
+    todoInput(inp); row.append(inp); f.append(row);
   }
+  f.querySelectorAll('input').forEach(fitLine);
 }
 function renderHabits(){
   const wk = key(cur), h = $('habits'); h.innerHTML = '';
