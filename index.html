@@ -85,7 +85,6 @@ button{cursor:pointer}
 .tt{padding:6px 6px 4px}
 .tt svg{display:block;width:100%;max-width:190px;margin:0 auto;cursor:pointer;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent}
 .ttRim{fill:none;stroke:var(--grid);stroke-width:1}
-.ttTick{stroke:var(--sub);stroke-width:.7}
 .ttNum{fill:var(--sub);font-family:Inter;font-size:8.5px;text-anchor:middle;dominant-baseline:central}
 .ttCut{stroke:var(--ink);stroke-width:1.1}
 .ttSel{fill:var(--hl);opacity:.4}
@@ -405,19 +404,19 @@ function timeCircle(k){
     if(sel != null && !c.includes(sel)) sel = null;
     let h = sel != null ? `<path class="ttSel" d="${ttArc(sel, ttEnd(c, sel), R)}"/>` : '';
     h += `<circle class="ttRim" r="${R}"/>`;
-    for(let s=0; s<SLOTS; s++){ const [x1,y1] = ttPt(s, R * (s%2 ? .95 : .9)), [x2,y2] = ttPt(s, R); h += `<line class="ttTick" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>`; }
     for(let hr=0; hr<24; hr++){ const [x,y] = ttPt(hr*2, R + 11); h += `<text class="ttNum" x="${x}" y="${y}">${hr%12 || 12}</text>`; }
     c.forEach(s => { const [x,y] = ttPt(s, R); h += `<line class="ttCut" x1="0" y1="0" x2="${x}" y2="${y}"/>`; });
     c.forEach(s => { if(t[s]) h += ttText(t[s], s, ttEnd(c, s), R); });
     svg.innerHTML = h + '<line class="ttGhost" x1="0" y1="0"/>';
     if(sel == null){
       inp.hidden = true;
-      rng.textContent = c.length ? '칸: 글쓰기 · 선: 지우기' : '테두리를 누르면 선이 생겨';
+      rng.textContent = c.length ? '' : '테두리를 누르면 선이 생겨';
     } else {
       inp.hidden = false;
       rng.textContent = `${ttSlotName(sel)} ~ ${ttSlotName(ttEnd(c, sel))}`;
       if(document.activeElement !== inp) inp.value = t[sel] ?? '';
     }
+    ed.hidden = inp.hidden && !rng.textContent;
   }
   // 누른 위치 → 시계 좌표 (a: 0시부터 몇 번째 30분인지, s: 가장 가까운 선 자리)
   const loc = e => {
