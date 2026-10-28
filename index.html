@@ -410,7 +410,7 @@ function timeCircle(k){
     svg.innerHTML = h + '<line class="ttGhost" x1="0" y1="0"/>';
     if(sel == null){
       inp.hidden = true;
-      rng.textContent = c.length ? '' : '테두리를 누르면 선이 생겨';
+      rng.textContent = '';
     } else {
       inp.hidden = false;
       rng.textContent = `${ttSlotName(sel)} ~ ${ttSlotName(ttEnd(c, sel))}`;
