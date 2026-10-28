@@ -395,7 +395,7 @@ function timeCircle(k){
   const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
   svg.setAttribute('viewBox','-100 -100 200 200');
   const ed = el('div','ttEd'), rng = el('span'), inp = el('input');
-  inp.enterKeyHint = 'done'; ed.append(rng, inp); box.append(svg, ed);
+  inp.enterKeyHint = 'next'; ed.append(rng, inp); box.append(svg, ed);
   let sel = null;   // 글 쓰는 중인 칸의 시작 선
   const data = () => peek(k)?.tt ?? { c:[], t:{} };
   const edit = () => day(k).tt ??= { c:[], t:{} };
@@ -458,7 +458,14 @@ function timeCircle(k){
   });
   svg.addEventListener('pointerleave', () => svg.querySelector('.ttGhost').classList.remove('on'));
   inp.oninput = () => { const r = edit(); if(inp.value) r.t[sel] = inp.value; else delete r.t[sel]; save(); draw(); };
-  inp.onkeydown = e => { if(e.key === 'Enter' && !e.isComposing){ e.preventDefault(); inp.blur(); } };
+  // 엔터: 다음 시간 칸으로 (마지막 칸이면 쓰기 끝). 한글 조합 중 엔터는 글자만 확정
+  inp.onkeydown = e => {
+    if(e.key !== 'Enter') return;
+    e.preventDefault(); if(e.isComposing) return;
+    const { c, t } = data(), i = c.indexOf(sel);
+    if(i < 0 || i + 1 >= c.length){ inp.blur(); return; }
+    sel = c[i+1]; inp.value = t[sel] ?? ''; draw();
+  };
   inp.onblur = () => { sel = null; draw(); };
   draw();
   return box;
