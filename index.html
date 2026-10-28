@@ -81,9 +81,21 @@ button{cursor:pointer}
   background:repeating-linear-gradient(to bottom,transparent 0,transparent calc(var(--lh) - 1px),var(--line) calc(var(--lh) - 1px),var(--line) var(--lh));
   background-position:0 6px;background-color:transparent}
 .target{position:absolute;left:0;right:0;border-top:1.5px dashed var(--over);pointer-events:none;opacity:.55}
-.kw input{width:100%;border:0;background:transparent;outline:none;padding:6px 8px;font-size:11.5px;color:var(--sub)}
-.kw{border-bottom:0}
-.kwrow .cell{border-bottom:1px solid var(--grid)}
+/* 원형 시간표: 테두리를 누르면 30분 단위로 선, 나뉜 칸을 누르면 아래 칸에 글쓰기 */
+.tt{padding:6px 6px 4px}
+.tt svg{display:block;width:100%;max-width:190px;margin:0 auto;cursor:pointer;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent}
+.ttRim{fill:none;stroke:var(--grid);stroke-width:1}
+.ttTick{stroke:var(--sub);stroke-width:.7}
+.ttNum{fill:var(--sub);font-family:Inter;font-size:8.5px;text-anchor:middle;dominant-baseline:central}
+.ttCut{stroke:var(--ink);stroke-width:1.1}
+.ttSel{fill:var(--hl);opacity:.4}
+.ttTxt{fill:var(--ink);text-anchor:middle;dominant-baseline:central}
+.ttGhost{stroke:var(--over);stroke-width:1.2;stroke-dasharray:3 2;opacity:0;pointer-events:none}
+.ttGhost.on{opacity:.8}
+.ttEd{border-top:1px dashed var(--line);margin-top:4px;padding-top:3px;min-height:26px}
+.ttEd span{display:block;font-family:Inter;font-size:10px;color:var(--sub);text-align:center;line-height:20px}
+.ttEd input[hidden]{display:none}
+.ttEd input{display:block;width:100%;border:0;border-bottom:1px solid var(--line);background:transparent;outline:none;font-size:12.5px;padding:2px 2px 3px}
 
 /* side */
 .side{width:330px;flex:none;display:flex;flex-direction:column;gap:12px}
@@ -133,7 +145,10 @@ button{cursor:pointer}
 .dv .grat{padding:0}
 .dv .grow{height:44px;padding:0 12px;gap:10px}
 .dv .grow input{font-size:16px}
-.dv .kw input{font-size:16px;padding:12px}
+.dv .tt{padding:6px 12px 10px}
+.dv .tt svg{max-width:360px}
+.dv .ttEd span{font-size:13px;line-height:28px}
+.dv .ttEd input{font-size:16px;padding:8px 2px}
 .dv .focus .frow{min-height:42px;padding:0 12px}
 .dv .focus .ln{font-size:16px;line-height:22px;height:29px}
 .dhab{display:flex;align-items:center;gap:10px;height:46px;padding:0 12px;border-top:1px solid var(--line)}
@@ -310,7 +325,13 @@ function renderBoard(){
     b.append(c);
   });
 
-  // 2. 감사한 것 3개 (원형 시간표 자리)
+  // 2. 원형 시간표
+  dates.forEach((d,i) => { const c = timeCircle(key(d)); c.classList.add('cell', `c${i}`); b.append(c); });
+
+  // 3. 일기
+  dates.forEach((d,i) => b.append(diaryCell(key(d), `cell diary c${i}`, BOARD_FS, i===0 ? '오늘 일기…' : '')));
+
+  // 4. 감사한 것 3개 (예전 키워드 줄 자리)
   dates.forEach((d,i) => {
     const k = key(d), c = el('div', `cell grat c${i}`);
     c.append(el('div','lbl','감사한 것'));
@@ -324,19 +345,123 @@ function renderBoard(){
     b.append(c);
   });
 
-  // 3. 일기
-  dates.forEach((d,i) => b.append(diaryCell(key(d), `cell diary c${i}`, BOARD_FS, i===0 ? '오늘 일기…' : '')));
-
-  // 4. 키워드 한 줄
-  dates.forEach((d,i) => {
-    const k = key(d), c = el('div', `cell kw c${i}`);
-    c.style.borderBottom = '1px solid var(--grid)';
-    const inp = el('input'); inp.placeholder = '키워드'; inp.value = peek(k)?.kw ?? '';
-    inp.oninput = () => { day(k).kw = inp.value; save(); };
-    c.append(inp); b.append(c);
-  });
-
   calibrate();
+}
+
+// ── 원형 시간표 ── 하루를 30분 칸 48개로 나눈다. 0번 = 밤 12시(맨 위), 시계 방향
+// 데이터: day.tt = { c: 선이 있는 칸 번호(오름차순), t: { 칸의 시작 선 번호: 쓴 글 } }
+const SLOTS = 48, TT_R = 78;
+const ttAng = s => s / SLOTS * Math.PI * 2 - Math.PI / 2;
+const ttPt = (s, r) => [Math.cos(ttAng(s)) * r, Math.sin(ttAng(s)) * r];
+const ttSlotName = s => { s %= SLOTS; const h = Math.floor(s/2); return `${h < 12 ? '오전' : '오후'} ${h%12 || 12}시${s%2 ? ' 30분' : ''}`; };
+// 시작 선 s에서 시작하는 칸이 끝나는 선 (한 바퀴 넘어가면 SLOTS를 더함)
+const ttEnd = (c, s) => { const i = c.indexOf(s); return i + 1 < c.length ? c[i+1] : c[0] + SLOTS; };
+// 위치 a(칸 번호, 소수 가능)가 들어 있는 칸의 시작 선
+const ttSegOf = (c, a) => { let s = c[c.length-1]; for(const x of c) if(x <= a) s = x; return s; };
+const ttEsc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const ttCtx = document.createElement('canvas').getContext('2d');
+const ttW = (s, fs) => { ttCtx.font = `${fs}px "Gowun Dodum"`; return ttCtx.measureText(s).width; };
+function ttWrap(s, fs, w){
+  const out = []; let line = '';
+  for(const ch of s){ if(line && ttW(line + ch, fs) > w){ out.push(line); line = ch.trim(); } else line += ch; }
+  if(line) out.push(line);
+  return out;
+}
+function ttArc(a, b, R){
+  if(b - a >= SLOTS) return `M${R} 0A${R} ${R} 0 1 1 ${-R} 0A${R} ${R} 0 1 1 ${R} 0Z`;
+  const [x1,y1] = ttPt(a,R), [x2,y2] = ttPt(b,R);
+  return `M0 0L${x1} ${y1}A${R} ${R} 0 ${b - a > SLOTS/2 ? 1 : 0} 1 ${x2} ${y2}Z`;
+}
+// 칸 안에 글 넣기: 넓은 칸(6시간 이상)은 가로로 여러 줄, 좁은 칸은 반지름 방향으로 한 줄
+function ttText(v, a, b, R){
+  const span = b - a, mid = (a + b) / 2, BASE = 9;
+  if(span >= 12){
+    const full = span >= SLOTS, rc = full ? 0 : R * .5;
+    const w = full ? R * 1.4 : Math.min(R * 1.2, 2 * rc * Math.sin(Math.min(span, 24) / SLOTS * Math.PI));
+    let fs = BASE, lines;
+    for(;; fs -= .5){ lines = ttWrap(v, fs, w); if(lines.length * fs * 1.2 <= R * .6 || fs <= 4.5) break; }
+    const [cx,cy] = full ? [0,0] : ttPt(mid, rc), top = cy - (lines.length - 1) * fs * .6;
+    return `<text class="ttTxt" style="font-size:${fs}px">${lines.map((l,i) => `<tspan x="${cx}" y="${top + i*fs*1.2}">${ttEsc(l)}</tspan>`).join('')}</text>`;
+  }
+  const L = R * .64, rm = R * .51;
+  let fs = Math.min(BASE, 2 * rm * Math.sin(span / SLOTS * Math.PI) * .8), t = v;
+  while(ttW(t, fs) > L && fs > 4.5) fs -= .25;
+  while(ttW(t, fs) > L && t.length > 1) t = t.slice(0, -2) + '…';
+  let deg = ttAng(mid) * 180 / Math.PI; const flip = deg > 90 && deg < 270;
+  return `<text class="ttTxt" style="font-size:${fs}px" transform="rotate(${deg}) translate(${rm} 0)${flip ? ' rotate(180)' : ''}">${ttEsc(t)}</text>`;
+}
+function timeCircle(k){
+  const box = el('div','tt'), R = TT_R;
+  const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('viewBox','-100 -100 200 200');
+  const ed = el('div','ttEd'), rng = el('span'), inp = el('input');
+  inp.enterKeyHint = 'done'; ed.append(rng, inp); box.append(svg, ed);
+  let sel = null;   // 글 쓰는 중인 칸의 시작 선
+  const data = () => peek(k)?.tt ?? { c:[], t:{} };
+  const edit = () => day(k).tt ??= { c:[], t:{} };
+
+  function draw(){
+    const { c, t } = data();
+    if(sel != null && !c.includes(sel)) sel = null;
+    let h = sel != null ? `<path class="ttSel" d="${ttArc(sel, ttEnd(c, sel), R)}"/>` : '';
+    h += `<circle class="ttRim" r="${R}"/>`;
+    for(let s=0; s<SLOTS; s++){ const [x1,y1] = ttPt(s, R * (s%2 ? .95 : .9)), [x2,y2] = ttPt(s, R); h += `<line class="ttTick" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>`; }
+    for(let hr=0; hr<24; hr++){ const [x,y] = ttPt(hr*2, R + 11); h += `<text class="ttNum" x="${x}" y="${y}">${hr%12 || 12}</text>`; }
+    c.forEach(s => { const [x,y] = ttPt(s, R); h += `<line class="ttCut" x1="0" y1="0" x2="${x}" y2="${y}"/>`; });
+    c.forEach(s => { if(t[s]) h += ttText(t[s], s, ttEnd(c, s), R); });
+    svg.innerHTML = h + '<line class="ttGhost" x1="0" y1="0"/>';
+    if(sel == null){
+      inp.hidden = true;
+      rng.textContent = c.length ? '칸: 글쓰기 · 선: 지우기' : '테두리를 누르면 선이 생겨';
+    } else {
+      inp.hidden = false;
+      rng.textContent = `${ttSlotName(sel)} ~ ${ttSlotName(ttEnd(c, sel))}`;
+      if(document.activeElement !== inp) inp.value = t[sel] ?? '';
+    }
+  }
+  // 누른 위치 → 시계 좌표 (a: 0시부터 몇 번째 30분인지, s: 가장 가까운 선 자리)
+  const loc = e => {
+    const r = svg.getBoundingClientRect(), sc = 200 / r.width;
+    const x = (e.clientX - r.left) * sc - 100, y = (e.clientY - r.top) * sc - 100;
+    let a = (Math.atan2(y, x) + Math.PI/2) / (Math.PI*2) * SLOTS; if(a < 0) a += SLOTS;
+    return { x, y, r: Math.hypot(x, y), a, s: Math.round(a) % SLOTS, sc };
+  };
+  // 이미 있는 선 가까이를 눌렀는지
+  const hitCut = (p, c) => c.find(s => {
+    const g = ttAng(s), along = p.x*Math.cos(g) + p.y*Math.sin(g), off = Math.abs(p.y*Math.cos(g) - p.x*Math.sin(g));
+    return along > R*.12 && along < R*1.05 && off < Math.min((PHONE.matches ? 8 : 4) * p.sc, along * .06);   // 안쪽은 칸이 좁아서 선에 아주 가까울 때만
+  });
+  const onRim = p => p.r > R * .85;
+  function toggleCut(s){
+    const r = edit(), i = r.c.indexOf(s);
+    if(i < 0){ r.c.push(s); r.c.sort((a,b) => a - b); }
+    else {
+      r.c.splice(i, 1);
+      // 선을 지우면 그 칸에 쓴 글은 앞 칸 글 뒤에 붙인다
+      if(r.c.length && r.t[s] != null){ const v = r.t[s], p = ttSegOf(r.c, s); delete r.t[s]; r.t[p] = r.t[p] ? r.t[p] + ', ' + v : v; }
+    }
+    save(); draw();
+  }
+  svg.addEventListener('click', e => {
+    const p = loc(e), { c } = data(), hit = hitCut(p, c);
+    if(hit != null || onRim(p)){ toggleCut(hit ?? p.s); return; }
+    if(!c.length) return;
+    sel = ttSegOf(c, p.a); draw(); inp.focus();
+  });
+  // 컴퓨터: 테두리 위에 마우스를 올리면 선이 생길 자리를 점선으로 미리 보여 줌
+  svg.addEventListener('pointermove', e => {
+    if(e.pointerType !== 'mouse') return;
+    const p = loc(e), hit = hitCut(p, data().c), g = svg.querySelector('.ttGhost');
+    const on = hit != null || onRim(p);
+    g.classList.toggle('on', on);
+    if(on){ const [x,y] = ttPt(hit ?? p.s, R); g.setAttribute('x2', x); g.setAttribute('y2', y); }
+  });
+  svg.addEventListener('pointerleave', () => svg.querySelector('.ttGhost').classList.remove('on'));
+  inp.oninput = () => { const r = edit(); if(inp.value) r.t[sel] = inp.value; else delete r.t[sel]; save(); draw(); };
+  inp.onkeydown = e => { if(e.key === 'Enter' && !e.isComposing){ e.preventDefault(); inp.blur(); } };
+  inp.onblur = () => { sel = null; draw(); };
+  draw();
+  return box;
 }
 
 // 일기 칸 하나 (줄노트 + 600자 점선). cfg는 BOARD_FS / PHONE_FS
@@ -485,6 +610,10 @@ function renderDay(){
   }
   card('할 일  ·  왼쪽 칸: O → △ → X', todo);
 
+  // 시간표 + 일기
+  card('시간표', timeCircle(k));
+  card('일기', diaryCell(k, 'diary', PHONE_FS, '오늘 일기…'));
+
   // 감사한 것
   const grat = el('div','grat');
   for(let g=0;g<3;g++){
@@ -495,13 +624,6 @@ function renderDay(){
     row.append(inp); grat.append(row);
   }
   card('감사한 것', grat);
-
-  // 일기 + 키워드
-  card('일기', diaryCell(k, 'diary', PHONE_FS, '오늘 일기…'));
-  const kw = el('div','kw'), kin = el('input');
-  kin.placeholder = '키워드'; kin.value = peek(k)?.kw ?? '';
-  kin.oninput = () => { day(k).kw = kin.value; save(); };
-  kw.append(kin); card(null, kw);
 
   // 이번 주 Focus
   const focus = el('div','focus');
