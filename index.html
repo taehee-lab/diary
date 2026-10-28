@@ -219,6 +219,7 @@ button{cursor:pointer}
     <div class="card syncBox"></div>
     <div class="card io">
       <button class="exportTxt"></button>
+      <button class="exportTime"></button>
       <button class="exportJson">전체 백업 저장 (.json)</button>
       <button class="importJson">백업 불러오기</button>
       <small>내용은 이 브라우저에 자동 저장돼. 브라우저 기록(사이트 데이터)을 지우면 사라지니까 가끔 백업 저장해 둬.</small>
@@ -660,7 +661,7 @@ function renderDay(){
 
   // 저장 / 백업
   const io = el('div','io');
-  io.innerHTML = `<button class="exportTxt">${d.getMonth()+1}월 일기 txt로 저장</button><button class="exportJson">전체 백업 저장 (.json)</button><button class="importJson">백업 불러오기</button>`;
+  io.innerHTML = `<button class="exportTxt">${d.getMonth()+1}월 일기 txt로 저장</button><button class="exportTime">${d.getMonth()+1}월 시간표 txt로 저장</button><button class="exportJson">전체 백업 저장 (.json)</button><button class="importJson">백업 불러오기</button>`;
   card(null, io);
   bindIO(io);
   const sb = el('div','syncBox'); card('동기화', sb); renderSyncBox(sb);
@@ -692,6 +693,7 @@ function renderHead(){
     box.append(btn);
   }
   document.querySelector('#weekView .exportTxt').textContent = `${thu.getMonth()+1}월 일기 txt로 저장`;
+  document.querySelector('#weekView .exportTime').textContent = `${thu.getMonth()+1}월 시간표 txt로 저장`;
 }
 
 // ── side ──
@@ -765,8 +767,26 @@ function exportTxt(){
   if(!n) return alert(`${m+1}월에 쓴 일기가 아직 없어.`);
   download(`${y}. ${m+1}월.txt`, out, 'text/plain;charset=utf-8');
 }
+// 생활 패턴 분석용 시간표 txt (일기 txt와 따로). 글을 안 쓴 칸은 잔 시간이라 '잠'으로 적는다
+function exportTimeTxt(){
+  const base = PHONE.matches ? curDay : addDays(cur,3), y = base.getFullYear(), m = base.getMonth();
+  const last = new Date(y, m+1, 0).getDate();
+  let out = `<${m+1}월 시간표>
+`, n = 0;
+  for(let d=1; d<=last; d++){
+    const tt = db.days[key(new Date(y,m,d))]?.tt;
+    // 선만 긋고 글을 하나도 안 쓴 날은 덜 쓴 날이라 뺀다 (안 그러면 하루 종일 '잠'이 됨)
+    if(!tt?.c.length || !tt.c.some(s => tt.t[s]?.trim())) continue;
+    const segs = tt.c.map(s => `${ttSlotName(s)}~${ttSlotName(ttEnd(tt.c, s))} ${tt.t[s]?.trim() || '잠'}`);
+    out += `${m+1}/${d}: ${segs.join(' / ')}
+`; n++;
+  }
+  if(!n) return alert(`${m+1}월에 그린 시간표가 아직 없어.`);
+  download(`${y}. ${m+1}월 시간표.txt`, out, 'text/plain;charset=utf-8');
+}
 function bindIO(box){
   box.querySelector('.exportTxt').onclick = exportTxt;
+  box.querySelector('.exportTime').onclick = exportTimeTxt;
   box.querySelector('.exportJson').onclick = () => download(`일기백업_${key(new Date())}.json`, JSON.stringify(db,null,1), 'application/json');
   box.querySelector('.importJson').onclick = () => $('fileIn').click();
 }
