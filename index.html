@@ -93,8 +93,11 @@ button{cursor:pointer}
 .ttGhost.on{opacity:.8}
 .ttEd{border-top:1px dashed var(--line);margin-top:4px;padding-top:3px;min-height:26px}
 .ttEd span{display:block;font-family:Inter;font-size:10px;color:var(--sub);text-align:center;line-height:20px}
-.ttEd input[hidden]{display:none}
-.ttEd input{display:block;width:100%;border:0;border-bottom:1px solid var(--line);background:transparent;outline:none;font-size:12.5px;padding:2px 2px 3px}
+.ttRow{display:flex;align-items:center;gap:4px}
+.ttRow[hidden]{display:none}
+.ttPrev{flex:none;border:0;background:var(--pill);border-radius:5px;width:22px;height:22px;padding:0;font-size:14px;line-height:1;color:var(--ink)}
+.ttPrev:disabled{opacity:.3;cursor:default}
+.ttEd input{display:block;flex:1;min-width:0;border:0;border-bottom:1px solid var(--line);background:transparent;outline:none;font-size:12.5px;padding:2px 2px 3px}
 
 /* side */
 .side{width:330px;flex:none;display:flex;flex-direction:column;gap:12px}
@@ -148,6 +151,7 @@ button{cursor:pointer}
 .dv .tt svg{max-width:360px}
 .dv .ttEd span{font-size:13px;line-height:28px}
 .dv .ttEd input{font-size:16px;padding:8px 2px}
+.dv .ttPrev{width:38px;height:38px;font-size:20px;border-radius:8px}
 .dv .focus .frow{min-height:42px;padding:0 12px}
 .dv .focus .ln{font-size:16px;line-height:22px;height:29px}
 .dhab{display:flex;align-items:center;gap:10px;height:46px;padding:0 12px;border-top:1px solid var(--line)}
@@ -533,7 +537,9 @@ function timeCircle(k){
   const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
   svg.setAttribute('viewBox','-100 -100 200 200');
   const ed = el('div','ttEd'), rng = el('span'), inp = el('input');
-  inp.enterKeyHint = 'next'; ed.append(rng, inp); box.append(svg, ed);
+  // ‹ 버튼: 앞 시간 칸으로 (누를 때 입력칸 포커스가 빠지지 않게 mousedown을 막음)
+  const row = el('div','ttRow'), prev = el('button','ttPrev','‹'); prev.title = '앞 칸으로 (← 키)';
+  inp.enterKeyHint = 'next'; row.append(prev, inp); ed.append(rng, row); box.append(svg, ed);
   let sel = null;   // 글 쓰는 중인 칸의 시작 선
   const data = () => peek(k)?.tt ?? { c:[], t:{} };
   const edit = () => day(k).tt ??= { c:[], t:{} };
@@ -548,10 +554,11 @@ function timeCircle(k){
     c.forEach(s => { if(t[s]) h += ttText(t[s], s, ttEnd(c, s), R); });
     svg.innerHTML = h + '<line class="ttGhost" x1="0" y1="0"/>';
     if(sel == null){
-      inp.hidden = true;
+      inp.hidden = row.hidden = true;
       rng.textContent = '';
     } else {
-      inp.hidden = false;
+      inp.hidden = row.hidden = false;
+      prev.disabled = c.indexOf(sel) <= 0;
       rng.textContent = `${ttSlotName(sel)} ~ ${ttSlotName(ttEnd(c, sel))}`;
       if(document.activeElement !== inp) inp.value = t[sel] ?? '';
     }
@@ -597,14 +604,23 @@ function timeCircle(k){
   svg.addEventListener('pointerleave', () => svg.querySelector('.ttGhost').classList.remove('on'));
   inp.oninput = () => { const r = edit(); if(inp.value) r.t[sel] = inp.value; else delete r.t[sel]; save(); draw(); };
   // 엔터: 다음 시간 칸으로 (마지막 칸이면 쓰기 끝). 한글 조합 중 엔터는 글자만 확정
+  const goPrev = () => {
+    const { c, t } = data(), i = c.indexOf(sel);
+    if(i <= 0) return;
+    sel = c[i-1]; inp.value = t[sel] ?? ''; draw();
+  };
+  prev.addEventListener('mousedown', e => e.preventDefault());
+  prev.onclick = () => { goPrev(); inp.focus(); };
+  // ← 키: 앞 시간 칸으로 (한글 조합 중이면 글자만 확정)
   inp.onkeydown = e => {
+    if(e.key === 'ArrowLeft'){ if(e.isComposing) return; e.preventDefault(); goPrev(); return; }
     if(e.key !== 'Enter') return;
     e.preventDefault(); if(e.isComposing) return;
     const { c, t } = data(), i = c.indexOf(sel);
     if(i < 0 || i + 1 >= c.length){ inp.blur(); return; }
     sel = c[i+1]; inp.value = t[sel] ?? ''; draw();
   };
-  inp.onblur = () => { sel = null; draw(); };
+  inp.onblur = e => { if(e.relatedTarget === prev) return; sel = null; draw(); };
   draw();
   return box;
 }
