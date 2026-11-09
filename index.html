@@ -12,7 +12,7 @@
 <link rel="icon" href="icon-192.png">
 <title>Weekly Record</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Nanum+Pen+Script&family=Gaegu:wght@400;700&family=Jua&family=Black+Han+Sans&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
 :root{
   --bg:#f4f4f2; --paper:#ffffff; --ink:#1d1d1f; --sub:#8a8a8e; --line:#e6e6e3; --grid:#6d6d70;
@@ -179,12 +179,65 @@ button{cursor:pointer}
 #pwDlg .btns .primary{background:var(--ink);color:var(--paper);border-color:var(--ink)}
 .dv .io{padding:12px;gap:8px}
 .dv .io button{font-size:15px;padding:12px}
+
+/* ── 비전보드: 일기와 따로 쓰는 자유 판. 판은 가로 800 고정 좌표, 화면 폭에 맞춰 확대·축소 ── */
+#visionView{display:none}
+body.vn #weekView,body.vn #dayView{display:none!important}
+body.vn #visionView{display:block}
+.vnOpen{border:0;background:var(--ink);color:var(--paper);border-radius:10px;padding:8px 14px;font-size:14px}
+.dvTop .vnGo{background:var(--ink);color:var(--paper);font-size:17px}
+.vnTop{position:sticky;top:0;z-index:20;background:var(--bg);padding:calc(10px + env(safe-area-inset-top)) 20px 10px;display:flex;flex-direction:column;gap:8px}
+.vnRow{display:flex;align-items:center;gap:7px;flex-wrap:wrap;min-height:36px}
+.vnTop h2{font-family:"Nanum Pen Script",cursive;font-weight:400;font-size:34px;margin:0 6px;line-height:1}
+.vnBtn{border:1px solid var(--line);background:var(--paper);border-radius:9px;padding:7px 12px;font-size:13.5px;white-space:nowrap}
+.vnBtn.dark{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.vnBtn.del{color:var(--over)}
+.vnWrap{padding:4px 20px 60px}
+.vnStage{position:relative;max-width:1100px;margin:0 auto;overflow:hidden;border-radius:8px}
+.vnBoard{position:absolute;left:0;top:0;width:800px;transform-origin:0 0;border-radius:8px;box-shadow:0 2px 16px rgba(0,0,0,.09);overflow:hidden}
+:root[data-theme="dark"] .vnBoard{filter:brightness(.86)}
+.vnBg0{background:#fbf7ef radial-gradient(#dcd0b9 1.1px,transparent 1.6px) 0 0/22px 22px}
+.vnBg1{background-color:#c79f72;background-image:radial-gradient(rgba(95,58,25,.28) 1px,transparent 1.7px),radial-gradient(rgba(255,240,210,.28) 1px,transparent 1.7px);background-size:9px 11px,13px 7px;background-position:0 0,4px 3px}
+.vnBg2{background-color:#fdfdfb;background-image:linear-gradient(#e2eaf1 1px,transparent 1px),linear-gradient(90deg,#e2eaf1 1px,transparent 1px);background-size:24px 24px}
+.vnBg3{background:#f7e6e2 radial-gradient(#ecc9c2 1.1px,transparent 1.6px) 0 0/26px 26px}
+.vnHint{position:absolute;left:0;right:0;top:300px;text-align:center;font-family:"Gaegu",cursive;font-size:26px;line-height:1.6;color:#a39883;pointer-events:none}
+.vi{position:absolute;touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab;-webkit-tap-highlight-color:transparent}
+.vi.sel{outline:calc(2px * var(--inv)) dashed #e07a70;outline-offset:calc(5px * var(--inv))}
+.vi.photo{background:#fff;box-shadow:0 8px 18px rgba(0,0,0,.18),0 1px 3px rgba(0,0,0,.12)}
+.vi.photo img{display:block;width:100%;object-fit:cover;background:#ece8e1;pointer-events:none}
+.vi.photo .cap{font-family:"Nanum Pen Script",cursive;text-align:center;color:#3a3530;line-height:1.15;padding:.3em .2em .45em;min-height:2.1em;white-space:pre-wrap;word-break:keep-all}
+.vi .tape{position:absolute;left:50%;top:0;width:38%;aspect-ratio:3.4;transform:translate(-50%,-55%) rotate(-4deg);
+  background-image:repeating-linear-gradient(45deg,rgba(255,255,255,.28) 0 5px,transparent 5px 10px);
+  clip-path:polygon(0 8%,4% 0,8% 10%,12% 0,100% 0,96% 12%,100% 25%,96% 40%,100% 55%,96% 70%,100% 85%,96% 100%,0 100%,4% 85%,0 70%,4% 55%,0 40%,4% 25%)}
+.vi.note{padding:.85em .9em;line-height:1.4;white-space:pre-wrap;word-break:keep-all;overflow-wrap:anywhere;color:#3a3530;box-shadow:0 6px 14px rgba(0,0,0,.14),0 1px 2px rgba(0,0,0,.08)}
+.vi .pin{position:absolute;left:50%;top:0;width:7%;aspect-ratio:1;border-radius:50%;transform:translate(-50%,-30%);background:radial-gradient(circle at 35% 30%,#ffb1a8,#c0453b 70%);box-shadow:0 2px 3px rgba(0,0,0,.3)}
+.vi.txt{line-height:1.15;white-space:pre-wrap;word-break:keep-all;overflow-wrap:anywhere;text-align:center}
+.vi .ph{opacity:.45}
+.vh{position:absolute;width:calc(var(--hs) * var(--inv));height:calc(var(--hs) * var(--inv));border-radius:50%;background:#fff;border:calc(2px * var(--inv)) solid #e07a70;touch-action:none;z-index:2;box-shadow:0 1px 4px rgba(0,0,0,.2)}
+.vh.rs{right:calc(var(--hs) * var(--inv) / -2);bottom:calc(var(--hs) * var(--inv) / -2);cursor:nwse-resize}
+.vh.rot{left:50%;top:calc(var(--hs) * var(--inv) * -2);transform:translateX(-50%);cursor:grab}
+.vnBoard{--hs:20px}
+@media (max-width:700px){
+  .vnBoard{--hs:30px}
+  .vnTop{padding-left:12px;padding-right:12px;gap:6px}
+  .vnTop h2{font-size:28px}
+  .vnBtn{padding:7px 10px;font-size:13px}
+  .vnWrap{padding:4px 12px calc(40px + env(safe-area-inset-bottom))}
+}
+#vnDlg{border:0;border-radius:14px;padding:20px;width:min(440px,calc(100vw - 32px));background:var(--paper);color:var(--ink);box-shadow:0 10px 40px rgba(0,0,0,.25)}
+#vnDlg::backdrop{background:rgba(0,0,0,.35)}
+#vnDlg h3{margin:0 0 10px;font-size:16px}
+#vnDlg textarea{display:block;width:100%;font-size:16px;line-height:1.5;padding:10px 12px;border:1px solid var(--grid);border-radius:8px;background:var(--bg);resize:vertical;outline:none}
+#vnDlg .btns{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
+#vnDlg .btns button{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:9px 16px;font-size:15px}
+#vnDlg .btns .primary{background:var(--ink);color:var(--paper);border-color:var(--ink)}
 </style>
 </head>
 <body>
 
 <div id="weekView">
 <div class="top">
+  <button class="vnOpen" title="비전보드 열기">✦ 비전보드</button>
   <div class="seg">
     <button id="btnPrev" title="지난 주">‹</button>
     <button id="btnToday" title="이번 주로">오늘</button>
@@ -229,7 +282,17 @@ button{cursor:pointer}
 </div>
 
 <div id="dayView"></div>
+<div id="visionView"></div>
 <input type="file" id="fileIn" accept=".json" hidden>
+<input type="file" id="vnFile" accept="image/*" multiple hidden>
+
+<dialog id="vnDlg">
+  <form method="dialog">
+    <h3 id="vnDlgT"></h3>
+    <textarea id="vnDlgTa" rows="5"></textarea>
+    <div class="btns"><button value="cancel" formnovalidate>취소</button><button value="ok" class="primary">저장</button></div>
+  </form>
+</dialog>
 
 <dialog id="pwDlg">
   <form method="dialog">
@@ -266,6 +329,7 @@ const DB_KEY = 'taehee-weekly-record';
 let db;
 try { db = JSON.parse(localStorage.getItem(DB_KEY)) || {}; } catch { db = {}; }
 db.days ??= {}; db.weeks ??= {}; db.habitNames ??= Array(HABITS).fill('');
+db.vision ??= { items:{}, bg:0, bgU:0 };
 let saveTimer, savePending = false;
 const setState = t => document.querySelectorAll('.saveState').forEach(e => e.textContent = t);
 function writeNow(){
@@ -599,7 +663,8 @@ function renderDay(){
     date.querySelector('small').prepend(back);
   }
   const theme = el('button','toggle'); theme.title = '다크 모드'; theme.onclick = toggleTheme;
-  top.append(prev, date, next, theme);
+  const vg = el('button','nav vnGo','✦'); vg.title = '비전보드'; vg.onclick = () => openVision(true);
+  top.append(vg, prev, date, next, theme);
   dv.append(top);
 
   const card = (title, body) => { const c = el('div','dc'); if(title) c.append(el('h4',null,title)); c.append(body); dv.append(c); return c; };
@@ -753,6 +818,7 @@ function go(m){
   render();
 }
 function render(){
+  if(vnOpen) return vnRender();
   if(PHONE.matches) renderDay();
   else { renderHead(); renderBoard(); renderCal(); renderFocus(); renderHabits(); renderSyncBox(document.querySelector('#weekView .syncBox')); }
 }
@@ -794,7 +860,16 @@ function exportTimeTxt(){
 function bindIO(box){
   box.querySelector('.exportTxt').onclick = exportTxt;
   box.querySelector('.exportTime').onclick = exportTimeTxt;
-  box.querySelector('.exportJson').onclick = () => download(`일기백업_${key(new Date())}.json`, JSON.stringify(db,null,1), 'application/json');
+  // 비전보드 사진은 IndexedDB에 따로 있어서 백업 파일에 data URL로 같이 넣는다
+  box.querySelector('.exportJson').onclick = async () => {
+    const imgs = {};
+    for(const it of Object.values(db.vision.items)){
+      if(it.del || !it.img) continue;
+      const b = await imgGet(it.img);
+      if(b) imgs[it.img] = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(b); });
+    }
+    download(`일기백업_${key(new Date())}.json`, JSON.stringify({ ...db, visionImgs: imgs },null,1), 'application/json');
+  };
   box.querySelector('.importJson').onclick = () => $('fileIn').click();
 }
 bindIO(document.querySelector('#weekView .io'));
@@ -804,10 +879,13 @@ $('fileIn').onchange = async e => {
     const d = JSON.parse(await f.text());
     if(!d.days) throw 0;
     if(!confirm('백업을 불러오면 지금 저장된 내용이 백업 내용으로 바뀌어. 계속할까?')) return;
-    db = d; db.weeks ??= {}; db.habitNames ??= Array(HABITS).fill('');
+    for(const [id, url] of Object.entries(d.visionImgs || {})) await imgPut(id, await (await fetch(url)).blob());
+    delete d.visionImgs;
+    db = d; db.weeks ??= {}; db.habitNames ??= Array(HABITS).fill(''); db.vision ??= { items:{}, bg:0, bgU:0 };
     // 불러온 내용이 동기화에서 이기도록 지금 시각을 찍는다
     const now = Date.now();
     Object.values(db.days).forEach(r => r.u = now); Object.values(db.weeks).forEach(r => r.u = now); db.habitNamesU = now;
+    Object.values(db.vision.items).forEach(r => r.u = now); db.vision.bgU = now;
     save(); render();
   } catch { alert('백업 파일을 읽지 못했어.'); }
   e.target.value = '';
@@ -954,6 +1032,14 @@ function merge(remote){
   const lu = db.habitNamesU||0, ru = remote.habitNamesU||0;
   if(remote.habitNames && ru > lu){ db.habitNames = remote.habitNames; db.habitNamesU = ru; changed = true; }
   else if(lu > ru) localNewer = true;
+  // 비전보드: 붙인 것 하나하나를 따로 비교 (지운 것도 del 표시로 남겨서 다른 기기에서도 지워지게)
+  const LV = db.vision, RV = remote.vision;
+  if(RV){
+    for(const id in RV.items) if(!LV.items[id] || pick(LV.items[id], RV.items[id])) { LV.items[id] = RV.items[id]; changed = true; }
+    for(const id in LV.items) if(!RV.items[id] || pick(RV.items[id], LV.items[id])) localNewer = true;
+    if((RV.bgU||0) > (LV.bgU||0)){ LV.bg = RV.bg; LV.bgU = RV.bgU; changed = true; }
+    else if((LV.bgU||0) > (RV.bgU||0)) localNewer = true;
+  } else if(Object.keys(LV.items).length || LV.bgU) localNewer = true;
   return { changed, localNewer };
 }
 function markDirty(){
@@ -982,10 +1068,11 @@ async function doSync(retry = 0){
       sync.rev = meta.rev;
     }
     if(up){
-      const text = await encrypt({ days: db.days, weeks: db.weeks, habitNames: db.habitNames, habitNamesU: db.habitNamesU || 0 });
+      const text = await encrypt({ days: db.days, weeks: db.weeks, habitNames: db.habitNames, habitNamesU: db.habitNamesU || 0, vision: db.vision });
       sync.rev = await upload(text, meta ? meta.rev : null);
       sync.dirty = false;
     }
+    await vnSyncImgs().catch(e => console.error('사진 동기화', e));
     sync.last = Date.now(); saveSync();
     const t = new Date(sync.last);
     setSync(`☁ 동기화됨 ${pad(t.getHours())}:${pad(t.getMinutes())}`);
@@ -1047,6 +1134,293 @@ function askDialog({ title, msg, confirm: twice = false, code = false, err = '' 
   });
 }
 
+// ── 비전보드 ──
+// db.vision.items[id] = { t:'photo'|'note'|'txt', x, y, w, fs(글씨), r(기울기°), z(겹침 순서), c(색 번호), f(글꼴 번호), text, img, ar(사진 세로/가로), u }
+// 지운 것은 { del:true, u }로 남긴다. 사진 파일은 localStorage가 좁아서 IndexedDB('wr-vision')에 따로 두고,
+// Dropbox에는 일기와 같은 키로 암호화해서 /img/<id>.enc 로 올린다
+const VN_W = 800, VN_MAX = 1600;
+const VN_FONTS = ['"Nanum Pen Script",cursive', '"Gaegu",cursive', '"Jua",sans-serif', '"Black Han Sans",sans-serif', '"Gowun Dodum",sans-serif'];
+const VN_NOTE = ['#fff3a8','#ffd8dd','#d6ecd3','#d4e6f7','#e5dbf5','#fdf6e9'];
+const VN_INK = ['#2b2b2e','#c0453b','#3b6ea5','#4f7d5c','#b0793a','#ffffff'];
+const VN_TAPE = ['rgba(240,165,165,.78)','rgba(165,203,235,.8)','rgba(245,218,135,.82)','rgba(182,218,176,.8)','rgba(208,188,235,.8)','transparent'];
+const VN_BGS = 4;
+let vnOpen = false, vnSelId = null, vnScale = 1, vnLastTap = { id:null, t:0 };
+const vnUrls = {};
+const vnItems = () => Object.entries(db.vision.items).filter(([,it]) => !it.del).sort((a,b) => a[1].z - b[1].z);
+const vnEdit = id => { const r = db.vision.items[id]; r.u = Date.now(); save(); return r; };
+const vnPad = w => `${w * .055}px ${w * .055}px 0`;   // 폴라로이드 흰 테두리 (사진 폭 기준)
+const vnRand = (a, b) => a + Math.random() * (b - a);
+
+// 사진 저장소 (IndexedDB)
+let vnDbP;
+const vnIdb = () => vnDbP ??= new Promise((res, rej) => {
+  const r = indexedDB.open('wr-vision', 1);
+  r.onupgradeneeded = () => r.result.createObjectStore('img');
+  r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+});
+async function vnStore(mode, fn){
+  const d = await vnIdb();
+  return new Promise((res, rej) => { const tx = d.transaction('img', mode), rq = fn(tx.objectStore('img')); tx.oncomplete = () => res(rq.result); tx.onerror = () => rej(tx.error); });
+}
+const imgGet = id => vnStore('readonly', s => s.get(id)).catch(() => null);
+const imgPut = (id, b) => vnStore('readwrite', s => s.put(b, id));
+const imgDel = id => vnStore('readwrite', s => s.delete(id)).catch(() => {});
+async function vnImgUrl(id){
+  if(vnUrls[id]) return vnUrls[id];
+  const b = await imgGet(id);
+  return b ? vnUrls[id] = URL.createObjectURL(b) : null;
+}
+
+function openVision(on){
+  flushSave();
+  vnOpen = on; vnSelId = null;
+  document.body.classList.toggle('vn', on);
+  if(on) vnRender(); else render();
+  scrollTo(0, 0);
+}
+
+function vnRender(){
+  const v = $('visionView'); v.innerHTML = '';
+  const top = el('div','vnTop'), r1 = el('div','vnRow'), r2 = el('div','vnRow');
+  const back = el('button','vnBtn','‹ 일기'); back.onclick = () => openVision(false);
+  const st = el('div','save-state', `<span class="saveState">자동 저장됨</span> <span class="syncState">${syncText}</span>`);
+  r1.append(back, el('h2', null, 'Vision Board'), st);
+  r2.className = 'vnRow vnTools';
+  top.append(r1, r2);
+
+  const wrap = el('div','vnWrap'), stage = el('div','vnStage'), board = el('div','vnBoard vnBg' + (db.vision.bg || 0));
+  board.addEventListener('pointerdown', e => { if(e.target === board) vnSelect(null); });
+  const items = vnItems();
+  if(!items.length) board.append(el('div','vnHint', PHONE.matches
+    ? '＋ 사진으로 앨범 사진을 붙이고<br>＋ 메모, ＋ 글씨로 꾸며 봐'
+    : '사진을 복사해서 Ctrl+V로 붙여 넣거나<br>위의 ＋ 버튼으로 채워 봐<br>되고 싶은 나, 가고 싶은 곳, 갖고 싶은 하루'));
+  items.forEach(([id]) => board.append(vnItemEl(id)));
+  stage.append(board); wrap.append(stage);
+  // 사진 파일을 끌어다 놓아도 붙는다
+  stage.addEventListener('dragover', e => e.preventDefault());
+  stage.addEventListener('drop', e => { e.preventDefault(); vnAddPhotos([...e.dataTransfer.files]); });
+  v.append(top, wrap);
+  vnTools();
+  vnLayout();
+}
+
+// 화면 폭에 맞춰 판 크기 조절 + 붙인 것 아래로 여유를 둬서 판 길이를 정한다
+function vnLayout(){
+  const stage = document.querySelector('.vnStage'), board = document.querySelector('.vnBoard');
+  if(!stage) return;
+  vnScale = stage.clientWidth / VN_W;
+  let h = Math.max(1000, (innerHeight - 140) / vnScale);
+  board.querySelectorAll('.vi').forEach(e => h = Math.max(h, e.offsetTop + e.offsetHeight + 260));
+  board.style.height = h + 'px';
+  board.style.transform = `scale(${vnScale})`;
+  board.style.setProperty('--inv', 1 / vnScale);
+  stage.style.height = h * vnScale + 'px';
+}
+
+// 위 도구 줄: 아무것도 안 고르면 '붙이기' 버튼들, 하나를 고르면 그걸 고치는 버튼들
+function vnTools(){
+  const r = document.querySelector('.vnTools'); if(!r) return;
+  r.innerHTML = '';
+  const b = (txt, fn, cls = '') => { const x = el('button', 'vnBtn ' + cls, txt); x.onclick = fn; r.append(x); };
+  const it = vnSelId && db.vision.items[vnSelId];
+  if(!it || it.del){
+    b('＋ 사진', () => $('vnFile').click(), 'dark');
+    b('＋ 메모', () => vnAdd('note'));
+    b('＋ 글씨', () => vnAdd('txt'));
+    b('배경 바꾸기', () => { db.vision.bg = ((db.vision.bg || 0) + 1) % VN_BGS; db.vision.bgU = Date.now(); save(); document.querySelector('.vnBoard').className = 'vnBoard vnBg' + db.vision.bg; });
+    return;
+  }
+  const id = vnSelId;
+  b(it.t === 'photo' ? '사진 밑 글' : '글 고치기', () => vnEditText(id));
+  b(it.t === 'photo' ? '테이프 색' : '색', () => { const x = vnEdit(id); x.c = (x.c + 1) % 6; vnRepaint(id); });
+  if(it.t !== 'photo') b('글꼴', () => { const x = vnEdit(id); x.f = (x.f + 1) % VN_FONTS.length; vnRepaint(id); vnLayout(); });
+  b('맨 앞', () => { vnEdit(id).z = Math.max(0, ...vnItems().map(([,x]) => x.z)) + 1; vnRepaint(id); });
+  b('맨 뒤', () => { vnEdit(id).z = Math.min(0, ...vnItems().map(([,x]) => x.z)) - 1; vnRepaint(id); });
+  b('똑바로', () => { vnEdit(id).r = 0; vnRepaint(id); });
+  b('지우기', () => vnDelete(id), 'del');
+  b('완료', () => vnSelect(null), 'dark');
+}
+
+function vnSelect(id){
+  if(vnSelId === id) return;
+  const old = vnSelId; vnSelId = id;
+  if(old && db.vision.items[old] && !db.vision.items[old].del) vnRepaint(old);
+  if(id) vnRepaint(id);
+  vnTools();
+}
+function vnRepaint(id){
+  const e = document.querySelector(`.vi[data-id="${id}"]`);
+  if(e) vnPaint(e, db.vision.items[id], id);
+}
+
+function vnPaint(e, it, id){
+  e.className = 'vi ' + it.t + (id === vnSelId ? ' sel' : '');
+  // 고른 것은 잠깐 맨 위로 보여서 손잡이를 잡을 수 있게 (저장된 겹침 순서는 그대로)
+  Object.assign(e.style, { left: it.x + 'px', top: it.y + 'px', width: it.w + 'px', zIndex: id === vnSelId ? 100000 : it.z,transform: `rotate(${it.r}deg)`, fontSize: it.fs + 'px' });
+  e.innerHTML = '';
+  if(it.t === 'photo'){
+    e.style.padding = vnPad(it.w);
+    const im = el('img'); im.draggable = false; im.alt = ''; im.style.aspectRatio = `1 / ${it.ar || 1}`;
+    vnImgUrl(it.img).then(u => { if(u) im.src = u; });
+    const cap = el('div','cap'); cap.textContent = it.text || '';
+    e.append(im, cap);
+    if(it.c < 5){ const tape = el('div','tape'); tape.style.backgroundColor = VN_TAPE[it.c]; e.append(tape); }
+  } else {
+    e.style.fontFamily = VN_FONTS[it.f];
+    if(it.t === 'note'){ e.style.background = VN_NOTE[it.c]; e.style.minHeight = it.w * .78 + 'px'; e.append(el('div','pin')); }
+    else e.style.color = VN_INK[it.c];
+    const s = el('span', it.text ? '' : 'ph'); s.textContent = it.text || (it.t === 'note' ? '두 번 눌러서 쓰기' : '두 번 눌러서 쓰기');
+    e.append(s);
+  }
+  if(id === vnSelId){ e.append(el('div','vh rs'), el('div','vh rot')); }
+}
+
+function vnItemEl(id){
+  const e = el('div'); e.dataset.id = id;
+  vnPaint(e, db.vision.items[id], id);
+  // 끌어서 옮기기 / 오른쪽 아래 동그라미로 크기 / 위 동그라미로 돌리기
+  e.addEventListener('pointerdown', ev => {
+    if(ev.button > 0) return;
+    ev.preventDefault();
+    vnSelect(id);
+    const it = db.vision.items[id], s = vnScale, sx = ev.clientX, sy = ev.clientY;
+    const h = ev.target.closest('.vh'), mode = !h ? 'mv' : h.classList.contains('rs') ? 'rs' : 'rot';
+    const rc = e.getBoundingClientRect(), cx = rc.left + rc.width / 2, cy = rc.top + rc.height / 2;
+    const d0 = Math.hypot(sx - cx, sy - cy) || 1, a0 = Math.atan2(sy - cy, sx - cx), h0 = e.offsetHeight;
+    const n = { x: it.x, y: it.y, w: it.w, fs: it.fs, r: it.r };
+    let moved = false;
+    e.setPointerCapture(ev.pointerId);
+    const move = m => {
+      const dx = m.clientX - sx, dy = m.clientY - sy;
+      if(!moved && Math.hypot(dx, dy) < 4) return;
+      moved = true;
+      if(mode === 'mv'){
+        n.x = Math.min(VN_W - it.w * .3, Math.max(-it.w * .7, it.x + dx / s));
+        n.y = Math.max(-h0 * .5, it.y + dy / s);
+      } else if(mode === 'rs'){
+        const f = Math.min(760 / it.w, Math.max(50 / it.w, Math.hypot(m.clientX - cx, m.clientY - cy) / d0));
+        n.w = it.w * f; n.fs = it.fs * f;
+        n.x = it.x + (it.w - n.w) / 2; n.y = it.y + h0 * (1 - f) / 2;   // 가운데를 기준으로 커지고 작아짐
+      } else {
+        let r = it.r + (Math.atan2(m.clientY - cy, m.clientX - cx) - a0) * 180 / Math.PI;
+        r = ((r + 540) % 360) - 180;
+        n.r = Math.abs(r) < 3 ? 0 : r;
+      }
+      Object.assign(e.style, { left: n.x + 'px', top: n.y + 'px', width: n.w + 'px', fontSize: n.fs + 'px', transform: `rotate(${n.r}deg)` });
+      if(it.t === 'note') e.style.minHeight = n.w * .78 + 'px';
+      if(it.t === 'photo') e.style.padding = vnPad(n.w);
+    };
+    const up = () => {
+      e.removeEventListener('pointermove', move); e.removeEventListener('pointerup', up); e.removeEventListener('pointercancel', up);
+      if(moved){ Object.assign(vnEdit(id), n); vnLayout(); return; }
+      // 두 번 누르면 글 쓰기
+      const now = Date.now();
+      if(mode === 'mv' && vnLastTap.id === id && now - vnLastTap.t < 400){ vnLastTap = { id:null, t:0 }; vnEditText(id); }
+      else vnLastTap = { id, t: now };
+    };
+    e.addEventListener('pointermove', move); e.addEventListener('pointerup', up); e.addEventListener('pointercancel', up);
+  });
+  return e;
+}
+
+function vnAdd(t, o = {}){
+  const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  const w = { photo: 240, note: 190, txt: 360 }[t], fs = { photo: 22, note: 20, txt: 48 }[t];
+  const stage = document.querySelector('.vnStage').getBoundingClientRect();
+  const midY = (Math.min(innerHeight, stage.bottom) + Math.max(0, stage.top)) / 2 - stage.top;
+  const zs = vnItems().map(([,x]) => x.z);
+  db.vision.items[id] = {
+    t, w, fs, x: VN_W / 2 - w / 2 + vnRand(-90, 90), y: Math.max(30, midY / vnScale - w / 2 + vnRand(-50, 50)),
+    r: t === 'txt' ? 0 : Math.round(vnRand(-5, 5)), z: (zs.length ? Math.max(...zs) : 0) + 1,
+    c: Math.floor(Math.random() * 5), f: t === 'txt' ? 0 : 1, text: '', u: Date.now(), ...o
+  };
+  save();
+  vnSelId = id; vnRender();
+  if(t !== 'photo' && !o.text) vnEditText(id);
+}
+// 사진은 긴 쪽 1600px JPEG로 줄여서 저장 (브라우저 저장 공간과 동기화 시간을 아끼려고)
+async function vnShrink(file){
+  const url = URL.createObjectURL(file), img = new Image();
+  img.src = url;
+  try { await img.decode(); } finally { setTimeout(() => URL.revokeObjectURL(url), 0); }
+  const k = Math.min(1, VN_MAX / Math.max(img.naturalWidth, img.naturalHeight));
+  const c = document.createElement('canvas');
+  c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+  const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(img, 0, 0, c.width, c.height);
+  const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', .85));
+  return { blob, ar: c.height / c.width };
+}
+async function vnAddPhotos(files){
+  files = files.filter(f => f.type.startsWith('image/'));
+  for(const f of files){
+    try {
+      const { blob, ar } = await vnShrink(f);
+      const img = Date.now().toString(36) + Math.random().toString(36).slice(2, 9);
+      await imgPut(img, blob);
+      vnAdd('photo', { img, ar });
+    } catch(e) { console.error(e); alert('이 사진은 붙이지 못했어.'); }
+  }
+}
+function vnDelete(id){
+  const it = db.vision.items[id];
+  if(!confirm(it.t === 'photo' ? '이 사진을 비전보드에서 지울까?' : '이걸 지울까?')) return;
+  if(it.img){ imgDel(it.img); if(vnUrls[it.img]) URL.revokeObjectURL(vnUrls[it.img]); delete vnUrls[it.img]; }
+  db.vision.items[id] = { del: true, u: Date.now() };
+  save(); vnSelId = null; vnRender();
+}
+function vnEditText(id){
+  const it = db.vision.items[id], d = $('vnDlg'), ta = $('vnDlgTa');
+  $('vnDlgT').textContent = it.t === 'photo' ? '사진 밑에 쓸 글' : it.t === 'note' ? '메모' : '글씨';
+  ta.value = it.text || '';
+  ta.placeholder = it.t === 'txt' ? '예) 2027 나는 이런 사람이 된다' : '';
+  d.onclose = () => {
+    if(d.returnValue !== 'ok') return;
+    vnEdit(id).text = ta.value.trim(); vnRepaint(id); vnLayout();
+  };
+  d.returnValue = ''; d.showModal(); ta.focus();
+}
+
+// 사진 Dropbox 동기화: 이 기기에만 있는 건 올리고, 없는 건 받아 온다
+const vnImgPath = id => `/img/${id}.enc`;
+async function vnSyncImgs(){
+  const up = new Set(sync.imgUp || []);
+  let got = false;
+  for(const it of Object.values(db.vision.items)){
+    if(it.del || !it.img) continue;
+    const blob = await imgGet(it.img);
+    if(blob && !up.has(it.img)){
+      const iv = crypto.getRandomValues(new Uint8Array(12));
+      const ct = new Uint8Array(await crypto.subtle.encrypt({ name:'AES-GCM', iv }, await loadKey(), await blob.arrayBuffer()));
+      const body = new Uint8Array(12 + ct.length); body.set(iv); body.set(ct, 12);
+      await dbx('https://content.dropboxapi.com/2/files/upload', { headers:{ 'Dropbox-API-Arg': JSON.stringify({ path: vnImgPath(it.img), mode:'overwrite', mute:true }), 'Content-Type':'application/octet-stream' }, body });
+      up.add(it.img); sync.imgUp = [...up]; saveSync();
+    } else if(!blob){
+      let buf;
+      try { buf = new Uint8Array(await (await dbx('https://content.dropboxapi.com/2/files/download', { headers:{ 'Dropbox-API-Arg': JSON.stringify({ path: vnImgPath(it.img) }) } })).arrayBuffer()); }
+      catch(e) { if(e.dbx?.startsWith('path/not_found')) continue; throw e; }
+      const pt = await crypto.subtle.decrypt({ name:'AES-GCM', iv: buf.slice(0, 12) }, await loadKey(), buf.slice(12));
+      await imgPut(it.img, new Blob([pt], { type:'image/jpeg' }));
+      up.add(it.img); sync.imgUp = [...up]; saveSync(); got = true;
+    }
+  }
+  if(got && vnOpen) vnRender();
+}
+
+$('vnFile').onchange = e => { vnAddPhotos([...e.target.files]); e.target.value = ''; };
+// 비전보드에서 붙여넣기: 사진이면 사진, 글이면 메모로
+document.addEventListener('paste', e => {
+  if(!vnOpen || $('vnDlg').open) return;
+  const files = [...(e.clipboardData?.files || [])].filter(f => f.type.startsWith('image/'));
+  if(files.length){ e.preventDefault(); vnAddPhotos(files); return; }
+  const t = e.clipboardData?.getData('text')?.trim();
+  if(t){ e.preventDefault(); vnAdd('note', { text: t }); }
+});
+document.addEventListener('keydown', e => {
+  if(!vnOpen || $('vnDlg').open || !vnSelId || /INPUT|TEXTAREA/.test(document.activeElement?.tagName)) return;
+  if(e.key === 'Delete' || e.key === 'Backspace'){ e.preventDefault(); vnDelete(vnSelId); }
+  else if(e.key === 'Escape') vnSelect(null);
+});
+
 // ── controls ──
 $('btnPrev').onclick = () => go(addDays(cur,-7));
 $('btnNext').onclick = () => go(addDays(cur,7));
@@ -1057,7 +1431,8 @@ const applyTheme = t => { document.documentElement.dataset.theme = t; try{ local
 try { applyTheme(localStorage.getItem('wr-theme') || 'light'); } catch { applyTheme('light'); }
 const toggleTheme = () => applyTheme(document.documentElement.dataset.theme==='dark' ? 'light' : 'dark');
 $('theme').onclick = toggleTheme;
-let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(calibrate, 120); });
+let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => vnOpen ? vnLayout() : calibrate(), 120); });
+document.querySelector('#weekView .vnOpen').onclick = () => openVision(true);
 PHONE.addEventListener('change', render);
 // 웹에 올린 버전에서만: 인터넷 없이도 열리게 (더블클릭으로 연 file://에서는 안 씀)
 if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost'))
